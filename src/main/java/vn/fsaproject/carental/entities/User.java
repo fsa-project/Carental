@@ -1,7 +1,9 @@
 package vn.fsaproject.carental.entities;
+
 import jakarta.persistence.*;
+
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -10,8 +12,10 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String password;
+    @Column(unique = true)
     private String name;
-    private String dateOfBirth;
+    private LocalDate dateOfBirth;
     private String nationalIdNo;
     private String phoneNo;
     private String email;
@@ -30,6 +34,13 @@ public class User {
     @OneToMany(mappedBy = "user")
     private List<Booking> bookings; // Dành cho vai trò Customer
 
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
     public Long getId() {
         return id;
     }
@@ -46,11 +57,11 @@ public class User {
         this.name = name;
     }
 
-    public String getDateOfBirth() {
+    public LocalDate getDateOfBirth() {
         return dateOfBirth;
     }
 
-    public void setDateOfBirth(String dateOfBirth) {
+    public void setDateOfBirth(LocalDate dateOfBirth) {
         this.dateOfBirth = dateOfBirth;
     }
 
