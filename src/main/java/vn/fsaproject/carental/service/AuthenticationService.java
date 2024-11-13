@@ -1,14 +1,16 @@
 package vn.fsaproject.carental.service;
 
-import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import vn.fsaproject.carental.dto.request.AuthenticationDTO;
 import vn.fsaproject.carental.dto.request.IntrospectDTO;
 import vn.fsaproject.carental.dto.request.LogoutDTO;
+import vn.fsaproject.carental.dto.request.RefreshDTO;
 import vn.fsaproject.carental.dto.response.AuthenticationResponse;
 import vn.fsaproject.carental.dto.response.IntrospectResponse;
 import vn.fsaproject.carental.entities.InvalidToken;
@@ -44,7 +46,10 @@ import java.util.UUID;
 public class AuthenticationService {
     InvalidTokenDAO invalidTokenDAO;
     UserDAO userDAO;
-    PasswordEncoder passwordEncoder;
+
+    @NonFinal
+    @Value("${jesse.jwt.refreshable-duration}")
+    protected int refreshabel_duration;
     @NonFinal
     @Value("${jesse.jwt.base64-secret}")
     protected String SIGN_KEY;
@@ -53,6 +58,7 @@ public class AuthenticationService {
     protected int expireTime;
 
     public AuthenticationResponse login(AuthenticationDTO request) {
+        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
         var user = userDAO.findByName(request.getName()).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
         if (!authenticated) throw new AppException(ErrorCode.UNAUTHENTICATED);
@@ -61,18 +67,17 @@ public class AuthenticationService {
     }
 
     public void logout(LogoutDTO request) throws ParseException, JOSEException {
-        try {
-            var signToken = verifyToken(request.getToken());
+            var signToken = verifyToken(request.getToken(), true);
 
             String jit = signToken.getJWTClaimsSet().getJWTID();
             Date expiryTime = signToken.getJWTClaimsSet().getExpirationTime();
 
-            InvalidToken invalidatedToken = new InvalidToken(jit, expiryTime);
+            InvalidToken invalidToken =
+                    InvalidToken.builder().id(jit).expireTime(expiryTime).build();
 
-            invalidTokenDAO.save(invalidatedToken);
-        } catch (AppException exception) {
-            log.info("Token already expired");
-        }
+            invalidTokenDAO.save(invalidToken);
+            log.info("invalid token saved");
+
     }
 
     private String generateToken(User user) {
@@ -96,6 +101,24 @@ public class AuthenticationService {
             throw new RuntimeException(e);
         }
     }
+    public AuthenticationResponse refreshToken(RefreshDTO request) throws ParseException, JOSEException {
+        var signedJWT = verifyToken(request.getToken(), true);
+
+        var jit = signedJWT.getJWTClaimsSet().getJWTID();
+        var expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+
+        InvalidToken invalidToken =
+                InvalidToken.builder().id(jit).expireTime(expiryTime).build();
+
+        var username = signedJWT.getJWTClaimsSet().getSubject();
+
+        var user =
+                userDAO.findByName(username).orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+
+        var token = generateToken(user);
+
+        return AuthenticationResponse.builder().token(token).authenticated(true).build();
+    }
 
     private String buildScope(User user) {
         StringJoiner stringJoiner = new StringJoiner(" ");
@@ -104,36 +127,42 @@ public class AuthenticationService {
         return stringJoiner.toString();
     }
 
-    private SignedJWT verifyToken(String token) throws ParseException, JOSEException {
-
-        JWSVerifier verifier = new MACVerifier(SIGN_KEY.getBytes(StandardCharsets.UTF_8));
+    private SignedJWT verifyToken(String token, boolean isRefresh) throws JOSEException, ParseException {
+        JWSVerifier verifier = new MACVerifier(SIGN_KEY.getBytes());
 
         SignedJWT signedJWT = SignedJWT.parse(token);
-        Date expiredTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-        boolean verified = signedJWT.verify(verifier);
-        if (!(verified && expiredTime.after(new Date()))) throw new AppException(ErrorCode.UNAUTHENTICATED);
 
-        if (invalidTokenDAO
-                .existsById(signedJWT.getJWTClaimsSet().getJWTID()))
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        Date expiryTime = (isRefresh)
+                ? new Date(signedJWT
+                .getJWTClaimsSet()
+                .getIssueTime()
+                .toInstant()
+                .plus(refreshabel_duration, ChronoUnit.SECONDS)
+                .toEpochMilli())
+                : signedJWT.getJWTClaimsSet().getExpirationTime();
+
+        var verified = signedJWT.verify(verifier);
+
+        if (!(verified && expiryTime.after(new Date()))) throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        if (invalidTokenDAO.existsById(signedJWT.getJWTClaimsSet().getJWTID()))
+            throw new AuthenticationServiceException(ErrorCode.EXPIRED_TOKEN.getMessage());
 
         return signedJWT;
     }
 
-    public IntrospectResponse introspect(IntrospectDTO request)
-            throws ParseException, JOSEException {
+    public IntrospectResponse introspect(IntrospectDTO request) throws JOSEException, ParseException {
         var token = request.getToken();
         boolean isValid = true;
+
         try {
-            verifyToken(token);
+            verifyToken(token, false);
         } catch (AppException e) {
             isValid = false;
         }
-        return IntrospectResponse.builder()
-                .valid(isValid)
-                .build();
-    }
 
+        return IntrospectResponse.builder().valid(isValid).build();
+    }
     public Role getUserRole(Long userId) {
         return userDAO.findById(userId)
                 .map(User::getRole)

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -27,6 +28,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
@@ -35,12 +39,12 @@ import java.nio.charset.StandardCharsets;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-    @NonFinal
-    @Value("${jesse.jwt.base64-secret}")
-    String SIGN_KEY;
     String[] PUBLIC_ENDPOINT ={
-            "/User/register","/login","/introspect","/logout"
+            "/User/register","/auth/login","/auth/introspect","/auth/logout","/"
     };
+    @Autowired
+    @Lazy
+    private CustomJwtDecoder customJwtDecoder;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -49,10 +53,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,PUBLIC_ENDPOINT).permitAll()
                 .requestMatchers(HttpMethod.GET,"/User/all").hasAuthority("OWNER")
                 .anyRequest().authenticated())
-                .logout(logout -> logout.logoutUrl("/logout").logoutSuccessUrl("/").permitAll());
+                .logout(logout -> logout.logoutSuccessUrl("/"));
         http.csrf(httpSecurityCsrfConfigurer -> httpSecurityCsrfConfigurer.disable());
         http.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwtConfigurer
-                -> jwtConfigurer.decoder(jwtDecoder()).jwtAuthenticationConverter(jwtAuthenticationConverter())));
+                -> jwtConfigurer.decoder(customJwtDecoder).jwtAuthenticationConverter(jwtAuthenticationConverter())));
         return http.build();
     }
     JwtAuthenticationConverter jwtAuthenticationConverter(){
@@ -65,13 +69,17 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder(){return new BCryptPasswordEncoder(12);}
     @Bean
-    JwtDecoder jwtDecoder(){
+    public CorsFilter corsFilter() {
+        CorsConfiguration corsConfiguration = new CorsConfiguration();
 
-        SecretKeySpec spec = new SecretKeySpec(SIGN_KEY.getBytes(StandardCharsets.UTF_8),"HS512");
-        return NimbusJwtDecoder
-                .withSecretKey(spec)
-                .macAlgorithm(MacAlgorithm.HS512)
-                .build();
-    };
+        corsConfiguration.addAllowedOrigin("*");
+        corsConfiguration.addAllowedMethod("*");
+        corsConfiguration.addAllowedHeader("*");
+
+        UrlBasedCorsConfigurationSource urlBasedCorsConfigurationSource = new UrlBasedCorsConfigurationSource();
+        urlBasedCorsConfigurationSource.registerCorsConfiguration("/**", corsConfiguration);
+
+        return new CorsFilter(urlBasedCorsConfigurationSource);
+    }
 
 }

@@ -1,9 +1,11 @@
 package vn.fsaproject.carental.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.RequestMapping;
 import vn.fsaproject.carental.dto.request.AuthenticationDTO;
 import vn.fsaproject.carental.dto.request.IntrospectDTO;
 import vn.fsaproject.carental.dto.request.LogoutDTO;
+import vn.fsaproject.carental.dto.request.RefreshDTO;
 import vn.fsaproject.carental.dto.response.ApiResponse;
 import vn.fsaproject.carental.dto.response.AuthenticationResponse;
 import vn.fsaproject.carental.dto.response.IntrospectResponse;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.text.ParseException;
 @Slf4j
 @RestController
+@RequestMapping("/auth")
 public class AuthenticationController {
     @Autowired
     AuthenticationService service;
@@ -34,14 +37,16 @@ public class AuthenticationController {
         ApiResponse<Void> response = new ApiResponse<>(1000,null,null);
         return response;
     }
+    @PostMapping("/refresh")
+    ApiResponse<AuthenticationResponse> authenticate(@RequestBody RefreshDTO request)
+            throws ParseException, JOSEException {
+        var result = service.refreshToken(request);
+        return ApiResponse.<AuthenticationResponse>builder().results(result).build();
+    }
     @PostMapping("/introspect")
     public ApiResponse<IntrospectResponse> authenticate(@RequestBody IntrospectDTO request)
             throws JOSEException, ParseException {
         var result = service.introspect(request);
-
-//        AuthenticationResponse authenticationResponse = new AuthenticationResponse(result,message);
-//        ApiResponse<AuthenticationResponse> response = new ApiResponse<>(1000,null,authenticationResponse);
-//        return response;
         return ApiResponse.<IntrospectResponse>builder()
                 .code(1000)
                 .results(result)
