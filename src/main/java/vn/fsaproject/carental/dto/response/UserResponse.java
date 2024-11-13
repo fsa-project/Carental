@@ -3,8 +3,10 @@ package vn.fsaproject.carental.dto.response;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import vn.fsaproject.carental.entities.Role;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -18,4 +20,5 @@ public class UserResponse {
     private String address;
     private String drivingLicense;
     private Double wallet;
+    private Set<RoleResponse> role;
 }

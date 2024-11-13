@@ -1,12 +1,21 @@
 package vn.fsaproject.carental.service;
 
+import com.nimbusds.oauth2.sdk.util.CollectionUtils;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
+import lombok.extern.slf4j.Slf4j;
 import vn.fsaproject.carental.dto.request.AuthenticationDTO;
 import vn.fsaproject.carental.dto.request.IntrospectDTO;
+import vn.fsaproject.carental.dto.request.LogoutDTO;
 import vn.fsaproject.carental.dto.response.AuthenticationResponse;
 import vn.fsaproject.carental.dto.response.IntrospectResponse;
+import vn.fsaproject.carental.entities.InvalidToken;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.exception.AppException;
 import vn.fsaproject.carental.exception.ErrorCode;
+import vn.fsaproject.carental.repository.InvalidTokenDAO;
 import vn.fsaproject.carental.repository.UserDAO;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
@@ -24,25 +33,42 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
-
+import java.util.StringJoiner;
+import java.util.UUID;
+@Slf4j
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Service
 public class AuthenticationService {
-    @Autowired
+    InvalidTokenDAO invalidTokenDAO;
     UserDAO userDAO;
-    @Autowired
     PasswordEncoder passwordEncoder;
-    @Autowired
+    @NonFinal
     @Value("${jesse.jwt.base64-secret}")
-    private String SIGN_KEY;
-    @Autowired
+    protected String SIGN_KEY;
+    @NonFinal
     @Value("${jesse.jwt.token-validity-in-seconds}")
-    private int expireTime;
+    protected int expireTime;
     public AuthenticationResponse login(AuthenticationDTO request){
         var user = userDAO.findByName(request.getName()).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
         if (!authenticated) throw new AppException(ErrorCode.UNAUTHENTICATED);
         String token = generateToken(user);
-        return new AuthenticationResponse(authenticated,token);
+        return new AuthenticationResponse(true,token);
+    }
+    public void logout(LogoutDTO request) throws ParseException, JOSEException {
+        try {
+            var signToken = verifyToken(request.getToken());
+
+            String jit = signToken.getJWTClaimsSet().getJWTID();
+            Date expiryTime = signToken.getJWTClaimsSet().getExpirationTime();
+
+            InvalidToken invalidatedToken = new InvalidToken(jit, expiryTime);
+
+            invalidTokenDAO.save(invalidatedToken);
+        } catch (AppException exception) {
+            log.info("Token already expired");
+        }
     }
 
     private String generateToken(User user) {
@@ -52,7 +78,8 @@ public class AuthenticationService {
                 .issuer("car_rental.com")
                 .issueTime(new Date())
                 .expirationTime(new Date(Instant.now().plus(expireTime, ChronoUnit.SECONDS).toEpochMilli()))
-                .claim("scope","phan quyen o day")
+                .jwtID(UUID.randomUUID().toString())
+                .claim("scope",buildScope(user))
                 .build();
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
 
@@ -65,20 +92,42 @@ public class AuthenticationService {
             throw new RuntimeException(e);
         }
     }
-    public IntrospectResponse introspect(IntrospectDTO request)
-            throws ParseException, JOSEException {
-        var token = request.getToken();
+
+    private String buildScope(User user) {
+        StringJoiner stringJoiner = new StringJoiner(" ");
+
+        if (!CollectionUtils.isEmpty(user.getRole()))
+            user.getRole().forEach(role -> stringJoiner.add(role.getName()));
+
+        return stringJoiner.toString();
+    }
+    private SignedJWT verifyToken(String token) throws ParseException, JOSEException {
 
         JWSVerifier verifier = new MACVerifier(SIGN_KEY.getBytes(StandardCharsets.UTF_8));
 
         SignedJWT signedJWT = SignedJWT.parse(token);
-
-        boolean verified = signedJWT.verify(verifier);
-
         Date expiredTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+        boolean verified = signedJWT.verify(verifier);
+        if (!(verified && expiredTime.after(new Date()))) throw new AppException(ErrorCode.UNAUTHENTICATED);
 
+        if (invalidTokenDAO
+                .existsById(signedJWT.getJWTClaimsSet().getJWTID()))
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        return signedJWT;
+    }
+
+    public IntrospectResponse introspect(IntrospectDTO request)
+            throws ParseException, JOSEException {
+        var token = request.getToken();
+        boolean isValid = true;
+        try {
+            verifyToken(token);
+        }catch (AppException e){
+            isValid = false;
+        }
         return IntrospectResponse.builder()
-                .valid(verified && expiredTime.after(new Date()))
+                .valid(isValid)
                 .build();
     }
 

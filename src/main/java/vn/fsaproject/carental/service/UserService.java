@@ -1,55 +1,67 @@
 package vn.fsaproject.carental.service;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import vn.fsaproject.carental.dto.request.RegisterDTO;
 import vn.fsaproject.carental.dto.request.UpdateProfileDTO;
 import vn.fsaproject.carental.dto.response.UserResponse;
+import vn.fsaproject.carental.entities.Role;
 import vn.fsaproject.carental.entities.User;
-import vn.fsaproject.carental.mapper.Mapper;
+import vn.fsaproject.carental.exception.AppException;
+import vn.fsaproject.carental.exception.ErrorCode;
+import vn.fsaproject.carental.mapper.RoleMapper;
+import vn.fsaproject.carental.mapper.UserMapper;
+import vn.fsaproject.carental.repository.RoleDAO;
 import vn.fsaproject.carental.repository.UserDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE,makeFinal = true)
 @Service
 public class UserService {
-    @Autowired
-    private UserDAO userDAO;
-    @Autowired
-    private Mapper mapper;
+    UserDAO userDAO;
+    RoleDAO roleDAO;
+    UserMapper userMapper;
+    RoleMapper roleMapper;
     @Autowired
     private PasswordEncoder passwordEncoder;
     public UserResponse register(RegisterDTO request){
-        User user = new User();
-        user.setName(request.getName());
+        User user = userMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setDateOfBirth(request.getDateOfBirth());
-        user.setNationalIdNo(request.getNationalIdNo());
-        user.setPhoneNo(request.getPhoneNo());
-        user.setEmail(request.getEmail());
-        user.setAddress(request.getAddress());
-        user.setDrivingLicense(request.getDrivingLicense());
-        user.setWallet(request.getWallet());
+        HashSet<Role> roles = new HashSet<>();
+        for (String roleName : request.getRole()) {
+            Role role = roleDAO.findByName(roleName)
+                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+            roles.add(role);
+        }
+        user.setRole(roles);
         userDAO.save(user);
-        return mapper.toUserResponse(user);
+        UserResponse response = userMapper.toUserResponse(user);
+        response.setRole(roleMapper.toRoleResponseSet(roles));
+        return response;
     }
     public User updateUser(UpdateProfileDTO request, Long id){
         User user = userDAO.findById(id)
-                .orElseThrow(() -> new RuntimeException("user Not Found"));
-        user.setName(request.getName());
-        user.setDateOfBirth(request.getDateOfBirth());
-        user.setNationalIdNo(request.getNationalIdNo());
-        user.setPhoneNo(request.getPhoneNo());
-        user.setEmail(request.getEmail());
-        user.setAddress(request.getAddress());
-        user.setDrivingLicense(request.getDrivingLicense());
-        user.setWallet(request.getWallet());
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        userMapper.updateUser(user,request);
         return userDAO.save(user);
     }
-    public List<User> getUsers (){
-        return userDAO.findAll();
+    public List<UserResponse> getUsers (){
+        return userMapper.toUserResponseList(userDAO.findAll());
     }
     public User getUser(Long id){
         return userDAO.findById(id).orElseThrow(() -> new RuntimeException("user Not Found"));
@@ -60,4 +72,7 @@ public class UserService {
     public void deleteAllUser(){
         userDAO.deleteAll();
     }
+
+
+
 }

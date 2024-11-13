@@ -8,7 +8,8 @@ import lombok.*;
 public enum ErrorCode {
     UNKNOWN_EXCEPTION(1001,"Uncategorize Exception"),
     USER_NOT_FOUND(1002,"User not found "),
-    UNAUTHENTICATED(1004,"Your password are incorrect")
+    UNAUTHENTICATED(1004,"Your password are incorrect"),
+    ROLE_NOT_FOUND(1005,"Your role does not exist")
 
     ;
     private int code;

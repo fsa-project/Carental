@@ -13,4 +13,12 @@ public class ExeptionHandler {
         response.setMessage(ErrorCode.UNKNOWN_EXCEPTION.getMessage());
         return ResponseEntity.badRequest().body(response);
     }
+    @ExceptionHandler(value = AppException.class)
+    ResponseEntity<ApiResponse>hendleAppExeption(AppException e){
+        ErrorCode errorCode = e.getErrorCode();
+        ApiResponse response = new ApiResponse();
+        response.setCode(errorCode.getCode());
+        response.setMessage(errorCode.getMessage());
+        return ResponseEntity.badRequest().body(response);
+    }
 }

@@ -1,7 +1,9 @@
 package vn.fsaproject.carental.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import vn.fsaproject.carental.dto.request.AuthenticationDTO;
 import vn.fsaproject.carental.dto.request.IntrospectDTO;
+import vn.fsaproject.carental.dto.request.LogoutDTO;
 import vn.fsaproject.carental.dto.response.ApiResponse;
 import vn.fsaproject.carental.dto.response.AuthenticationResponse;
 import vn.fsaproject.carental.dto.response.IntrospectResponse;
@@ -13,16 +15,24 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.text.ParseException;
-
+@Slf4j
 @RestController
 public class AuthenticationController {
     @Autowired
     AuthenticationService service;
     @PostMapping("/login")
     ApiResponse<AuthenticationResponse> login(@RequestBody AuthenticationDTO request){
+
         var response = service.login(request);
         ApiResponse<AuthenticationResponse> apiResponse = new ApiResponse<>(1000,null,response);
         return apiResponse;
+    }
+    @PostMapping("/logout")
+    ApiResponse<Void> logout(@RequestBody LogoutDTO request)
+            throws ParseException, JOSEException {
+        service.logout(request);
+        ApiResponse<Void> response = new ApiResponse<>(1000,null,null);
+        return response;
     }
     @PostMapping("/introspect")
     public ApiResponse<IntrospectResponse> authenticate(@RequestBody IntrospectDTO request)

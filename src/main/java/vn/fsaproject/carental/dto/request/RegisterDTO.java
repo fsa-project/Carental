@@ -3,8 +3,10 @@ package vn.fsaproject.carental.dto.request;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import vn.fsaproject.carental.entities.Role;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -19,4 +21,5 @@ public class RegisterDTO {
     private String address;
     private String drivingLicense;
     private Double wallet;
+    private Set<String> role;
 }
