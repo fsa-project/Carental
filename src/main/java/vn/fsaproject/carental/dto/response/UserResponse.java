@@ -20,5 +20,5 @@ public class UserResponse {
     private String address;
     private String drivingLicense;
     private Double wallet;
-    private Set<RoleResponse> role;
+    private RoleResponse role;
 }

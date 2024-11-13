@@ -9,6 +9,7 @@ import vn.fsaproject.carental.entities.Role;
 import vn.fsaproject.carental.mapper.RoleMapper;
 import vn.fsaproject.carental.repository.RoleDAO;
 
+import javax.management.relation.RoleNotFoundException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,6 +41,10 @@ public class RoleService {
     }
     public void deleteRole(Long id){
         roleDAO.deleteById(id);
+    }
+
+    public Role getRole(String name) {
+        return roleDAO.findByName(name);
     }
 
 }

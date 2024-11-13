@@ -25,13 +25,9 @@ public class User {
     private Double wallet;
 
 
-    @ManyToMany
-    @JoinTable(
-            name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
-    private Set<Role> role;
+    @ManyToOne
+    @JoinColumn(name = "role_id") // Cột role_id là khóa ngoại trỏ tới bảng Role
+    private Role role;
 
     @OneToMany(mappedBy = "user")
     private List<Car> cars; // Dành cho vai trò Car Owner
@@ -39,19 +35,20 @@ public class User {
     @OneToMany(mappedBy = "user")
     private List<Booking> bookings; // Dành cho vai trò Customer
 
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public String getName() {
@@ -118,11 +115,11 @@ public class User {
         this.wallet = wallet;
     }
 
-    public Set<Role> getRole() {
+    public Role getRole() {
         return role;
     }
 
-    public void setRole(Set<Role> role) {
+    public void setRole(Role role) {
         this.role = role;
     }
 

@@ -42,16 +42,11 @@ public class UserService {
     public UserResponse register(RegisterDTO request){
         User user = userMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        HashSet<Role> roles = new HashSet<>();
-        for (String roleName : request.getRole()) {
-            Role role = roleDAO.findByName(roleName)
-                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
-            roles.add(role);
-        }
-        user.setRole(roles);
+
+        user.setRole(roleDAO.findByName(request.getRole()));
         userDAO.save(user);
         UserResponse response = userMapper.toUserResponse(user);
-        response.setRole(roleMapper.toRoleResponseSet(roles));
+        response.setRole(roleMapper.toRoleResponse(roleDAO.findByName(request.getRole())));
         return response;
     }
     public User updateUser(UpdateProfileDTO request, Long id){

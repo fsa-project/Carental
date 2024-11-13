@@ -49,7 +49,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,PUBLIC_ENDPOINT).permitAll()
                 .requestMatchers(HttpMethod.GET,"/User/all").hasAuthority("OWNER")
                 .anyRequest().authenticated())
-                .logout(logout -> logout.logoutUrl("/logout").logoutSuccessUrl("/login?logout").permitAll());
+                .logout(logout -> logout.logoutUrl("/logout").logoutSuccessUrl("/").permitAll());
         http.csrf(httpSecurityCsrfConfigurer -> httpSecurityCsrfConfigurer.disable());
         http.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwtConfigurer
                 -> jwtConfigurer.decoder(jwtDecoder()).jwtAuthenticationConverter(jwtAuthenticationConverter())));

@@ -27,8 +27,8 @@ public class Car {
     private String additionalFunctions;
     private String termsOfUse;
 
-    @ElementCollection
-    private List<String> images;
+    @OneToMany(mappedBy = "car", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CarImage> images;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
@@ -37,6 +37,7 @@ public class Car {
     @OneToMany
     @JoinColumn(name = "car_id")
     private List<Booking> bookings;
+
 
     public Long getId() {
         return id;
@@ -182,11 +183,11 @@ public class Car {
         this.termsOfUse = termsOfUse;
     }
 
-    public List<String> getImages() {
+    public List<CarImage> getImages() {
         return images;
     }
 
-    public void setImages(List<String> images) {
+    public void setImages(List<CarImage> images) {
         this.images = images;
     }
 

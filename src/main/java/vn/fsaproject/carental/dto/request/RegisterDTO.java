@@ -21,5 +21,5 @@ public class RegisterDTO {
     private String address;
     private String drivingLicense;
     private Double wallet;
-    private Set<String> role;
+    private String role;
 }

@@ -13,5 +13,5 @@ import java.util.Set;
 public interface RoleMapper {
     Role toRole(RoleDTO roleDTO);
     RoleResponse toRoleResponse(Role role);
-    Set<RoleResponse> toRoleResponseSet(Set<Role> roles);
+    Set<RoleResponse> toRoleResponseSet(Set<Role> role);
 }

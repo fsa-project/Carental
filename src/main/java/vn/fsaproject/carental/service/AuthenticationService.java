@@ -12,6 +12,7 @@ import vn.fsaproject.carental.dto.request.LogoutDTO;
 import vn.fsaproject.carental.dto.response.AuthenticationResponse;
 import vn.fsaproject.carental.dto.response.IntrospectResponse;
 import vn.fsaproject.carental.entities.InvalidToken;
+import vn.fsaproject.carental.entities.Role;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.exception.AppException;
 import vn.fsaproject.carental.exception.ErrorCode;
@@ -35,6 +36,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.StringJoiner;
 import java.util.UUID;
+
 @Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -49,13 +51,15 @@ public class AuthenticationService {
     @NonFinal
     @Value("${jesse.jwt.token-validity-in-seconds}")
     protected int expireTime;
-    public AuthenticationResponse login(AuthenticationDTO request){
+
+    public AuthenticationResponse login(AuthenticationDTO request) {
         var user = userDAO.findByName(request.getName()).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
         if (!authenticated) throw new AppException(ErrorCode.UNAUTHENTICATED);
         String token = generateToken(user);
-        return new AuthenticationResponse(true,token);
+        return new AuthenticationResponse(true, token);
     }
+
     public void logout(LogoutDTO request) throws ParseException, JOSEException {
         try {
             var signToken = verifyToken(request.getToken());
@@ -79,11 +83,11 @@ public class AuthenticationService {
                 .issueTime(new Date())
                 .expirationTime(new Date(Instant.now().plus(expireTime, ChronoUnit.SECONDS).toEpochMilli()))
                 .jwtID(UUID.randomUUID().toString())
-                .claim("scope",buildScope(user))
+                .claim("scope", buildScope(user))
                 .build();
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
 
-        JWSObject object = new JWSObject(header,payload);
+        JWSObject object = new JWSObject(header, payload);
 
         try {
             object.sign(new MACSigner(SIGN_KEY.getBytes(StandardCharsets.UTF_8)));
@@ -96,11 +100,10 @@ public class AuthenticationService {
     private String buildScope(User user) {
         StringJoiner stringJoiner = new StringJoiner(" ");
 
-        if (!CollectionUtils.isEmpty(user.getRole()))
-            user.getRole().forEach(role -> stringJoiner.add(role.getName()));
-
+        stringJoiner.add(user.getRole().getName());
         return stringJoiner.toString();
     }
+
     private SignedJWT verifyToken(String token) throws ParseException, JOSEException {
 
         JWSVerifier verifier = new MACVerifier(SIGN_KEY.getBytes(StandardCharsets.UTF_8));
@@ -123,12 +126,18 @@ public class AuthenticationService {
         boolean isValid = true;
         try {
             verifyToken(token);
-        }catch (AppException e){
+        } catch (AppException e) {
             isValid = false;
         }
         return IntrospectResponse.builder()
                 .valid(isValid)
                 .build();
+    }
+
+    public Role getUserRole(Long userId) {
+        return userDAO.findById(userId)
+                .map(User::getRole)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
 }
