@@ -1,57 +1,63 @@
 package vn.fsaproject.carental.controller;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import vn.fsaproject.carental.dto.response.*;
-import vn.fsaproject.carental.dto.request.*;
-import vn.fsaproject.carental.entities.User;
-import vn.fsaproject.carental.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import vn.fsaproject.carental.entities.User;
+import vn.fsaproject.carental.exception.IdInvalidException;
+import vn.fsaproject.carental.service.UserService;
+import vn.fsaproject.carental.utils.annotation.ApiMessage;
 
 import java.util.List;
-@Slf4j
-@RestController
-@RequestMapping("/User")
-public class UserController {
-    @Autowired
-    UserService userService;
 
-    @PostMapping("/register")
-    ApiResponse<UserResponse> register(@RequestBody RegisterDTO request){
-        ApiResponse<UserResponse> response = new ApiResponse<>();
-        response.setMessage("User create successfully!!");
-        response.setResults(userService.register(request));
-        return response;
+@RestController
+@RequestMapping("/users")
+public class UserController {
+    private final UserService userService;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserController(UserService userService, PasswordEncoder passwordEncoder) {
+        this.userService = userService;
+        this.passwordEncoder = passwordEncoder;
     }
-    @PostMapping("/update/{user_id}")
-    User updateUser(
-            @RequestBody UpdateProfileDTO request,
-            @PathVariable("user_id") Long id
-    ){
-        return userService.updateUser(request,id);
+
+    @PostMapping
+    @ApiMessage("Create a new user")
+    public ResponseEntity<User> createUser(@Valid @RequestBody User user) throws IdInvalidException {
+        boolean isEmailExist = this.userService.isEmailExist(user.getEmail());
+        if (isEmailExist) {
+            throw new IdInvalidException("Email already exists");
+        }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        userService.handleCreateUser(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
-    @GetMapping("/all")
-    ApiResponse<List<UserResponse>> getUsers(){
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.info("Username: {}",authentication.getName());
-        authentication.getAuthorities().forEach(grantedAuthority -> log.info(grantedAuthority.getAuthority()));
-        ApiResponse<List<UserResponse>> response = new ApiResponse<>();
-        response.setResults(userService.getUsers());
-        return response;
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable long id) {
+        userService.handleDeleteUser(id);
+        return ResponseEntity.noContent().build();
     }
-    @GetMapping("/{user_id}")
-    User getUser(@PathVariable("user_id") Long id){
-        return userService.getUser(id);
+
+    @GetMapping("{id}")
+    public ResponseEntity<User> getUser(@PathVariable long id) throws IdInvalidException {
+        if (id > 1500) {
+            throw new IdInvalidException("Id invalid");
+        }
+        return ResponseEntity.ok(this.userService.handleUserById(id));
     }
-    @DeleteMapping("del/{user_id}")
-    void delUser(@PathVariable("user_id")Long id){
-        userService.deleteUser(id);
+
+    @GetMapping
+    @ApiMessage("Fetch all user")
+    public ResponseEntity<List<User>> getUsers() {
+        return ResponseEntity.status(HttpStatus.OK).body(this.userService.handleAllUser());
     }
-    @DeleteMapping("/del_all")
-    void delAllUser(){
-        userService.deleteAllUser();
+
+    @PutMapping("{id}")
+    public ResponseEntity<User> updateUser(@RequestBody User user) {
+        return ResponseEntity.ok(this.userService.handleUpdateUser(user));
     }
 }
