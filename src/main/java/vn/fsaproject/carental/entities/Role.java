@@ -3,6 +3,7 @@ package vn.fsaproject.carental.entities;
 import java.time.Instant;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -26,6 +27,11 @@ public class Role {
     private Instant updatedAt;
     private String createdBy;
     private String updatedBy;
+
+    @OneToMany(mappedBy = "role", fetch = FetchType.LAZY)
+    @JsonIgnore
+    List<User> users;
+
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JsonIgnoreProperties(value = {"roles"})
