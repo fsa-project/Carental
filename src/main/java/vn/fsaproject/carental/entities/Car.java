@@ -206,4 +206,31 @@ public class Car {
     public void setBookings(List<Booking> bookings) {
         this.bookings = bookings;
     }
+
+    @Override
+    public String toString() {
+        return "Car{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", licensePlate='" + licensePlate + '\'' +
+                ", brand='" + brand + '\'' +
+                ", model='" + model + '\'' +
+                ", color='" + color + '\'' +
+                ", numberOfSeats=" + numberOfSeats +
+                ", productionYears=" + productionYears +
+                ", transmissionType='" + transmissionType + '\'' +
+                ", fuelType='" + fuelType + '\'' +
+                ", mileage=" + mileage +
+                ", fuelConsumption=" + fuelConsumption +
+                ", basePrice=" + basePrice +
+                ", deposit=" + deposit +
+                ", address='" + address + '\'' +
+                ", description='" + description + '\'' +
+                ", additionalFunctions='" + additionalFunctions + '\'' +
+                ", termsOfUse='" + termsOfUse + '\'' +
+                ", images=" + images +
+                ", user=" + user +
+                ", bookings=" + bookings +
+                '}';
+    }
 }

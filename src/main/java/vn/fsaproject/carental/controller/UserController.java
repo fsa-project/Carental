@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import vn.fsaproject.carental.dto.response.UserResponse;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.exception.IdInvalidException;
 import vn.fsaproject.carental.service.UserService;
@@ -24,7 +25,7 @@ public class UserController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    @PostMapping
+    @PostMapping("/register")
     @ApiMessage("Create a new user")
     public ResponseEntity<User> createUser(@Valid @RequestBody User user) throws IdInvalidException {
         boolean isEmailExist = this.userService.isEmailExist(user.getEmail());
@@ -56,7 +57,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK).body(this.userService.handleAllUser());
     }
 
-    @PutMapping("{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@RequestBody User user) {
         return ResponseEntity.ok(this.userService.handleUpdateUser(user));
     }

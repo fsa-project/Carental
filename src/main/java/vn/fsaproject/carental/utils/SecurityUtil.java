@@ -16,10 +16,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Stream;
 
 @Service
@@ -123,6 +120,14 @@ public class SecurityUtil {
             return jwt.getSubject();
         }
         return null;
+    }
+    // Lấy id của User đang trong phiên đăng nhập
+    public static Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        Map<String, Object> user = jwt.getClaim("user");
+        return Long.valueOf(user.get("id").toString()); // Retrieve userId directly
     }
 
 //    public static boolean isAuthenticated() {

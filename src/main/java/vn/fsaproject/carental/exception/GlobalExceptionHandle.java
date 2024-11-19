@@ -2,6 +2,7 @@ package vn.fsaproject.carental.exception;
 
 
 import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import vn.fsaproject.carental.dto.response.RestResponse;
 
 import java.util.List;
