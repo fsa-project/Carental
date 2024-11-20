@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.fsaproject.carental.dto.request.CreateCarDTO;
 import vn.fsaproject.carental.dto.request.UpdateCarDTO;
+import vn.fsaproject.carental.dto.response.CarImageResponse;
 import vn.fsaproject.carental.dto.response.CarResponse;
 import vn.fsaproject.carental.entities.Car;
 import vn.fsaproject.carental.entities.CarImage;
@@ -113,10 +114,57 @@ public class CarService {
         }
         return carResponses;
     }
-    public CarResponse handleUpdateCar(UpdateCarDTO carDTO, Long id) {
-        Car car = carRepository.findById(id).orElseThrow(() -> new RuntimeException("Car not found"));
+    public CarResponse handleUpdateCar(
+            UpdateCarDTO carDTO,
+            MultipartFile[] files,
+            Long carId,
+            Long userId
+    ) throws IOException {
+        // Tìm car và user theo id và check xem car có phải của user không
+        Car car = carRepository.findById(carId).orElseThrow(() -> new RuntimeException("Car not found"));
+        User user = userService.handleUserById(userId);
+        if (!user.getCars().contains(car)) {
+            throw new RuntimeException("Car not found");
+        }
         carMapper.updateCar(car, carDTO);
-        return carMapper.toCarResponse(car);
+        // Xóa các ảnh của xe cũ
+        List<CarImage> oldImages = carImageRepository.findByCarId(carId);
+        for (CarImage oldImage : oldImages) {
+            log.info("File path: {}", oldImage.getFilePath());
+            Path oldFilePath = Paths.get(oldImage.getFilePath());
+            try{
+                Files.deleteIfExists(oldFilePath);
+            }catch (IOException e){
+                throw new RuntimeException("Failed to delete old file:"+oldFilePath);
+            }
+            carImageRepository.delete(oldImage);
+        }
+        // thêm lại các ảnh được update
+        for (MultipartFile file : files) {
+            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+            Path filePath = Paths.get(uploadDir, fileName);
+
+            Files.write(filePath, file.getBytes());
+            // debug
+            log.info("new file path: {}", filePath.toString());
+            CarImage carImage = new CarImage();
+            carImage.setFilePath(filePath.toString());
+            carImage.setCar(car);
+            carImageRepository.save(carImage);
+        }
+
+
+        List<CarImage> updatedImages = carImageRepository.findByCarId(carId);
+
+        carRepository.save(car);
+        // Trả về đường dẫn cho CarResponse
+        CarResponse carResponse = carMapper.toCarResponse(car);
+        List<String> imagePaths = updatedImages.stream()
+                .map(carImage -> Paths.get(carImage.getFilePath())
+                        .getFileName().toString())
+                .collect(Collectors.toList());
+        carResponse.setImages(imagePaths);
+        return carResponse;
     }
     public void handleDeleteCar(Long id) {
         carRepository.deleteById(id);

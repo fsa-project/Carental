@@ -1,7 +1,11 @@
 package vn.fsaproject.carental.dto.request;
 
-import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
+import java.util.List;
+@Getter
+@Setter
 public class UpdateCarDTO {
     private String name;
     private String licensePlate;
@@ -17,7 +21,9 @@ public class UpdateCarDTO {
     private double basePrice;
     private double deposit;
     private String address;
+    private String additionalFunctions;
     private String description;
+    private String termsOfUse;
     private List<String> images;
 }
 

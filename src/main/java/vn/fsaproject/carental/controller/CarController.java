@@ -13,6 +13,7 @@ import vn.fsaproject.carental.dto.response.CarResponse;
 import vn.fsaproject.carental.entities.Car;
 import vn.fsaproject.carental.service.CarService;
 import vn.fsaproject.carental.utils.SecurityUtil;
+import vn.fsaproject.carental.utils.annotation.ApiMessage;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -29,6 +30,7 @@ public class CarController {
         this.carService = carService;
         this.securityUtil = securityUtil;
     }
+    @ApiMessage("Car create successfully!!!")
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CarResponse> createCar(
             @RequestPart("metadata") CreateCarDTO carDTO, // application/jason
@@ -42,6 +44,7 @@ public class CarController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+    @ApiMessage("User's cars")
     @GetMapping("/user-cars")
     public ResponseEntity<List<CarResponse>> getUserCars(){
         try{
@@ -55,9 +58,29 @@ public class CarController {
             return ResponseEntity.status(500).build();
         }
     }
-    @PutMapping("/update/{id}")
-    public ResponseEntity<CarResponse> updateCar(@RequestBody UpdateCarDTO carDTO, @PathVariable("id") Long id){
-        return ResponseEntity.ok(this.carService.handleUpdateCar(carDTO, id));
+    @ApiMessage("Car update successfully!!!")
+    @PutMapping(value = "/update/{carId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CarResponse> updateCar(
+            @RequestPart("metadata") UpdateCarDTO carDTO,
+            @PathVariable("carId") Long carId,
+            @RequestParam("files") MultipartFile[] files
+    ){
+        try {
+            Long userId = securityUtil.getCurrentUserId();
+            // Call the service method to handle the update
+            CarResponse carResponse = carService.handleUpdateCar(carDTO, files, carId, userId);
+
+            // Return a successful response with the updated car details
+            return ResponseEntity.ok(carResponse);
+
+        } catch (Exception e) {
+            // Log the error (optional)
+            e.printStackTrace();
+
+            // Return a bad request response with the error message
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(null); // You can return a custom error object if preferred
+        }
     }
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Void> deleteCar(@PathVariable("id") Long id){
