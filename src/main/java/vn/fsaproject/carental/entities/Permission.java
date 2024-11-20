@@ -23,18 +23,9 @@ public class Permission {
     private String apiPath;
     private String method;
     private String module;
-    private Instant createdAt;
-    private Instant updatedAt;
-    private String createdBy;
-    private String updatedBy;
 
     @ManyToMany(fetch = FetchType.LAZY, mappedBy = "permissions")
     @JsonIgnore
     private List<Role> roles;
 
-    @PrePersist
-    public void handleBeforeCreate() {
-        this.createdBy = SecurityUtil.getCurrentUserLogin().isPresent() ? SecurityUtil.getCurrentUserLogin().get() : null;
-        this.createdAt = Instant.now();
-    }
 }

@@ -9,11 +9,14 @@ import java.util.List;
 @Service
 public class UserService {
     private final UserRepository userRepository;
-    public UserService(UserRepository userRepository) {
+    private final RoleService roleService;
+    public UserService(UserRepository userRepository, RoleService roleService) {
         this.userRepository = userRepository;
+        this.roleService = roleService;
     }
 
     public User handleCreateUser(User user) {
+        user.setRole(this.roleService.findById(user.getRole().getId()));
         return userRepository.save(user);
     }
 

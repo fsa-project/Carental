@@ -45,7 +45,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(
                         auth ->
                                 auth
-                                        .requestMatchers("/users", "/auth/login", "/", "/auth/refresh", "/auth/logout").permitAll()
+                                        .requestMatchers("/users", "/users/register", "/auth/login", "/role", "/auth/refresh", "/auth/logout").permitAll()
                                         .requestMatchers("/api/images/**").permitAll() // đường dẫn của ảnh
                                         .anyRequest().authenticated()
                 )
