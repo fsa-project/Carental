@@ -42,22 +42,29 @@ public class SecurityUtil {
     @Value("${jesse.jwt.refresh-token-validity-in-seconds}")
     private long refreshTokenExpiration;
 
-    public String createAccessToken(String email, ResLoginDTO.UserLogin dto) {
+    public String createAccessToken(String email, ResLoginDTO dto) {
+
+        ResLoginDTO.UserInsideToken userToken = new ResLoginDTO.UserInsideToken();
+        userToken.setEmail(dto.getUser().getEmail());
+        userToken.setId(dto.getUser().getId());
+        userToken.setName(dto.getUser().getName());
+
+
         Instant now = Instant.now();
         Instant validity = now.plus(this.accessTokenExpiration, ChronoUnit.SECONDS);
 
         //hardcode permission
         List<String> listAuthority = new ArrayList<String>();
 
-        listAuthority.add("ROLE_USER");
-        listAuthority.add("ROLE_ADMIN");
+        listAuthority.add("ROLE_OWNER");
+        listAuthority.add("ROLE_RENTER");
 
 
         JwtClaimsSet claimsSet = JwtClaimsSet.builder()
                 .issuedAt(now)
                 .expiresAt(validity)
                 .subject(email)
-                .claim("user", dto)
+                .claim("user", userToken)
                 .claim("authorities", listAuthority)
                 .build();
 
@@ -67,6 +74,12 @@ public class SecurityUtil {
     }
 
     public String createRefreshToken(String email, ResLoginDTO dto) {
+
+        ResLoginDTO.UserInsideToken userToken = new ResLoginDTO.UserInsideToken();
+        userToken.setEmail(dto.getUser().getEmail());
+        userToken.setId(dto.getUser().getId());
+        userToken.setName(dto.getUser().getName());
+
         Instant now = Instant.now();
         Instant validity = now.plus(this.refreshTokenExpiration, ChronoUnit.SECONDS);
 
@@ -74,7 +87,7 @@ public class SecurityUtil {
                 .issuedAt(now)
                 .expiresAt(validity)
                 .subject(email)
-                .claim("user", dto.getUser())
+                .claim("user", userToken)
                 .build();
 
         JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();

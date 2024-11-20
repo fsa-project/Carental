@@ -1,6 +1,7 @@
 package vn.fsaproject.carental.service;
 
 import org.springframework.stereotype.Service;
+import vn.fsaproject.carental.entities.Role;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.repository.UserRepository;
 
@@ -9,11 +10,21 @@ import java.util.List;
 @Service
 public class UserService {
     private final UserRepository userRepository;
-    public UserService(UserRepository userRepository) {
+    private final RoleService roleService;
+
+    public UserService(UserRepository userRepository, RoleService roleService) {
+        this.roleService = roleService;
         this.userRepository = userRepository;
     }
 
     public User handleCreateUser(User user) {
+
+        if (user.getRole() != null) {
+            Role r = this.roleService.fetchById(user.getRole().getId());
+            user.setRole(r);
+        }
+
+
         return userRepository.save(user);
     }
 

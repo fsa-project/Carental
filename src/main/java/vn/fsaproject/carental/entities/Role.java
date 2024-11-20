@@ -22,11 +22,7 @@ public class Role {
     private String name;
 
     private String description;
-    private boolean active;
-    private Instant createdAt;
-    private Instant updatedAt;
-    private String createdBy;
-    private String updatedBy;
+    private boolean active = true;
 
     @OneToMany(mappedBy = "role", fetch = FetchType.LAZY)
     @JsonIgnore
@@ -37,11 +33,4 @@ public class Role {
     @JsonIgnoreProperties(value = {"roles"})
     @JoinTable(name = "permission_role", joinColumns = @JoinColumn(name = "role_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
     private List<Permission> permissions;
-
-    @PrePersist
-    public void handleBeforeCreate() {
-        this.createdBy = SecurityUtil.getCurrentUserLogin().isPresent() ? SecurityUtil.getCurrentUserLogin().get() : null;
-        this.createdAt = Instant.now();
-    }
-
 }
