@@ -21,5 +21,6 @@ public interface CarMapper {
     @Mapping(target = "images", ignore = true)
     CarResponse toCarResponse(Car car);
     List<CarResponse> toCarResponses(List<Car> cars);
+    @Mapping(target = "images",ignore = true)
     void updateCar(@MappingTarget Car car, UpdateCarDTO request);
 }

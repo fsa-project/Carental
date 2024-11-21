@@ -2,21 +2,24 @@ package vn.fsaproject.carental.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.fsaproject.carental.dto.request.CreateCarDTO;
 import vn.fsaproject.carental.dto.request.UpdateCarDTO;
 import vn.fsaproject.carental.dto.response.CarResponse;
+import vn.fsaproject.carental.dto.response.DataPaginationResponse;
+import vn.fsaproject.carental.dto.response.Meta;
 import vn.fsaproject.carental.entities.Car;
 import vn.fsaproject.carental.entities.CarImage;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.mapper.CarMapper;
 import vn.fsaproject.carental.repository.CarImageRepository;
 import vn.fsaproject.carental.repository.CarRepository;
-import vn.fsaproject.carental.repository.UserRepository;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -87,36 +90,90 @@ public class CarService {
         return response;
 
     }
-    public List<CarResponse> handleGetCars(Long userId){
-        List<Car> cars = carRepository.findByUserId(userId);
-        List<CarResponse> carResponses = new ArrayList<>();
-        // Lặp qua các xe mà User có
-//        for (Car car : cars) {
-//            List<String> imagePaths = car.getImages().stream()
-//                    .map(carImage -> "/api/images/" + Paths.get(carImage.getFilePath()).getFileName().toString())
-//                    .collect(Collectors.toList());
-//
-//            CarResponse carResponse = carMapper.toCarResponse(car);
-//            carResponse.setImages(imagePaths);
-//            carResponses.add(carResponse);
-//        }
-        // Lặp qua các xe mà User có
-        for (Car car : cars) {
-            String firstImagePath = car.getImages().stream()
-                    .findFirst() // Lấy ảnh đầu tiên, nếu có
-                    .map(carImage -> "/api/images/" + Paths.get(carImage.getFilePath()).getFileName().toString())
-                    .orElse(null);
 
+
+    public DataPaginationResponse handleGetCars(Long userId, Pageable pageable){
+        // Tạo đối tượng phân trang
+        Page<Car> cars = carRepository.findByUserId(userId,pageable);
+        // Thêm thông tin vào CarResopnse
+        List<CarResponse> carResponses = new ArrayList<>();
+        for (Car car : cars.getContent()) {
+            String firstImagePath = null;
+            if (!car.getImages().isEmpty()) {
+                CarImage firstImage = car.getImages().get(0); // Assuming images are stored in order
+                firstImagePath = "/api/images/" + Paths.get(firstImage.getFilePath()).getFileName().toString();
+            }
             CarResponse carResponse = carMapper.toCarResponse(car);
-            carResponse.setImages(firstImagePath != null ? List.of(firstImagePath) : new ArrayList<>()); // Add the first image only
+            if (firstImagePath != null) {
+                carResponse.setImages(List.of(firstImagePath));
+            } else {
+                carResponse.setImages(new ArrayList<>());
+            }
             carResponses.add(carResponse);
         }
-        return carResponses;
+        // Thêm các thông tin về phân trang
+        DataPaginationResponse response = new DataPaginationResponse();
+        Meta meta = new Meta();
+        meta.setPage(cars.getNumber()+1);
+        meta.setSize(cars.getSize());
+        meta.setPages(cars.getTotalPages());
+        meta.setTotal(cars.getTotalElements());
+        response.setMeta(meta);
+        response.setResult(carResponses);
+        return response;
     }
-    public CarResponse handleUpdateCar(UpdateCarDTO carDTO, Long id) {
-        Car car = carRepository.findById(id).orElseThrow(() -> new RuntimeException("Car not found"));
+
+
+
+    public CarResponse handleUpdateCar(
+            UpdateCarDTO carDTO,
+            MultipartFile[] files,
+            Long carId,
+            Long userId
+    ) throws IOException {
+        // Tìm car và user theo id và check xem car có phải của user không
+        Car car = carRepository.findById(carId).orElseThrow(() -> new RuntimeException("Car not found"));
+        User user = userService.handleUserById(userId);
+        if (!user.getCars().contains(car)) {
+            throw new RuntimeException("Car not found");
+        }
         carMapper.updateCar(car, carDTO);
-        return carMapper.toCarResponse(car);
+        // Xóa các ảnh của xe cũ
+        List<CarImage> oldImages = carImageRepository.findByCarId(carId);
+        for (CarImage oldImage : oldImages) {
+            log.info("File path: {}", oldImage.getFilePath());
+            Path oldFilePath = Paths.get(oldImage.getFilePath());
+            try{
+                Files.deleteIfExists(oldFilePath);
+            }catch (IOException e){
+                throw new RuntimeException("Failed to delete old file:"+oldFilePath);
+            }
+            carImageRepository.delete(oldImage);
+        }
+        // thêm lại các ảnh được update
+        for (MultipartFile file : files) {
+            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+            Path filePath = Paths.get(uploadDir, fileName);
+
+            Files.write(filePath, file.getBytes());
+            // debug
+            log.info("new file path: {}", filePath.toString());
+            CarImage carImage = new CarImage();
+            carImage.setFilePath(filePath.toString());
+            carImage.setCar(car);
+            carImageRepository.save(carImage);
+        }
+        List<CarImage> updatedImages = carImageRepository.findByCarId(carId);
+
+        carRepository.save(car);
+        // Trả về đường dẫn cho CarResponse
+        CarResponse carResponse = carMapper.toCarResponse(car);
+        List<String> imagePaths = updatedImages.stream()
+                .map(carImage -> Paths.get(carImage.getFilePath())
+                        .getFileName().toString())
+                .collect(Collectors.toList());
+        carResponse.setImages(imagePaths);
+        return carResponse;
     }
     public void handleDeleteCar(Long id) {
         carRepository.deleteById(id);
