@@ -26,6 +26,7 @@ public class Car {
     private String description;
     private String additionalFunctions;
     private String termsOfUse;
+    private String carStatus;
 
     @OneToMany(mappedBy = "car", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CarImage> images;
@@ -38,6 +39,13 @@ public class Car {
     @JoinColumn(name = "car_id")
     private List<Booking> bookings;
 
+    public String getCarStatus() {
+        return carStatus;
+    }
+
+    public void setCarStatus(String carStatus) {
+        this.carStatus = carStatus;
+    }
 
     public Long getId() {
         return id;
@@ -228,6 +236,7 @@ public class Car {
                 ", description='" + description + '\'' +
                 ", additionalFunctions='" + additionalFunctions + '\'' +
                 ", termsOfUse='" + termsOfUse + '\'' +
+                ", carStatus='" + carStatus + '\'' +
                 ", images=" + images +
                 ", user=" + user +
                 ", bookings=" + bookings +

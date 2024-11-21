@@ -3,12 +3,12 @@ package vn.fsaproject.carental.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import vn.fsaproject.carental.constant.CarStatus;
 import vn.fsaproject.carental.dto.request.CreateCarDTO;
 import vn.fsaproject.carental.dto.request.UpdateCarDTO;
 import vn.fsaproject.carental.dto.response.CarResponse;
@@ -61,6 +61,7 @@ public class CarService {
         // Map các thông tin từ Request vào 1 car mới
         Car car = carMapper.toCar(carDTO);
         car.setUser(user);
+        car.setCarStatus(CarStatus.AVAILABLE.getMessage());
         List<CarImage> carImages = new ArrayList<>();
 
         for (MultipartFile multipartFile : file) {
@@ -86,11 +87,10 @@ public class CarService {
                 .collect(Collectors.toList());
         CarResponse response = carMapper.toCarResponse(savedCar);
         response.setImages(imagePaths);
-
+        response.setCarStatus(CarStatus.AVAILABLE.getMessage());
         return response;
 
     }
-
 
     public DataPaginationResponse handleGetCars(Long userId, Pageable pageable){
         // Tạo đối tượng phân trang
@@ -109,6 +109,7 @@ public class CarService {
             } else {
                 carResponse.setImages(new ArrayList<>());
             }
+            carResponse.setCarStatus(car.getCarStatus());
             carResponses.add(carResponse);
         }
         // Thêm các thông tin về phân trang
@@ -122,8 +123,6 @@ public class CarService {
         response.setResult(carResponses);
         return response;
     }
-
-
 
     public CarResponse handleUpdateCar(
             UpdateCarDTO carDTO,
