@@ -52,7 +52,7 @@ public class BookingService {
         bookingRepository.save(booking);
         BookingResponse bookingResponse = bookingMapper.toBookingResponse(booking);
         bookingResponse.setId(booking.getId());
-        bookingResponse.setStatus(BookingStatus.PENDING_DEPOSIT.getMessage());
+        bookingResponse.setBookingStatus(BookingStatus.PENDING_DEPOSIT.getMessage());
         return bookingResponse;
     }
 
@@ -81,7 +81,7 @@ public class BookingService {
         booking.setBookingStatus(BookingStatus.CONFIRMED.getMessage());
         bookingRepository.save(booking);
         BookingResponse bookingResponse = bookingMapper.toBookingResponse(booking);
-        bookingResponse.setStatus(BookingStatus.CONFIRMED.getMessage());
+        bookingResponse.setBookingStatus(BookingStatus.CONFIRMED.getMessage());
         bookingResponse.setId(booking.getId());
         return bookingResponse;
     }
@@ -94,7 +94,7 @@ public class BookingService {
         bookingRepository.save(booking);
 
         BookingResponse bookingResponse = bookingMapper.toBookingResponse(booking);
-        bookingResponse.setStatus(BookingStatus.IN_PROGRESS.getMessage());
+        bookingResponse.setBookingStatus(BookingStatus.IN_PROGRESS.getMessage());
         bookingResponse.setId(booking.getId());
         return bookingResponse;
     }

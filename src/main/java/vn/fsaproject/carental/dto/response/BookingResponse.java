@@ -9,7 +9,7 @@ import java.util.Date;
 @Setter
 public class BookingResponse {
     private Long id;
-    private String status;
+    private String bookingStatus;
     private Date startDateTime;
     private Date endDateTime;
 }
