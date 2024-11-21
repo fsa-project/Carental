@@ -10,5 +10,6 @@ public class CarResponse {
     private String name;
     private double basePrice;
     private String address;
+    private String carStatus;
     private List<String> images;
 }
