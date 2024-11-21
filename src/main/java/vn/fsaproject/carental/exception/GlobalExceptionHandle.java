@@ -60,6 +60,16 @@ public class GlobalExceptionHandle {
         return ResponseEntity.badRequest().body(restResponse);
     }
 
+    @ExceptionHandler(value = PermissionException.class)
+    @ResponseBody
+    public ResponseEntity<RestResponse<Object>> handlePermissionException(Exception ex) {
+        RestResponse<Object> res = new RestResponse<Object>();
+        res.setStatusCode(HttpStatus.FORBIDDEN.value());
+        res.setMessage("Forbidden");
+        res.setError(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res);
+    }
+
     public ResponseEntity<RestResponse<Object>> handleNotFountException(Exception ex) {
         RestResponse<Object> res = new RestResponse<Object>();
         res.setStatusCode(HttpStatus.NOT_FOUND.value());

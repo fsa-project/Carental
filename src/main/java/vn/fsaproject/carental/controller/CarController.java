@@ -45,12 +45,13 @@ public class CarController {
     @GetMapping("/user-cars")
     public ResponseEntity<List<CarResponse>> getUserCars(){
         try{
-            Long userID = securityUtil.getCurrentUserId();
+            Long userID = SecurityUtil.getCurrentUserId();
             List<CarResponse> carResponses = carService.handleGetCars(userID);
             if(carResponses.isEmpty()){
                 return ResponseEntity.noContent().build();
             }
-            return ResponseEntity.ok(carResponses);
+            System.out.println(carResponses.get(0).getName());
+            return ResponseEntity.status(HttpStatus.OK).body(carResponses);
         }catch (Exception e){
             return ResponseEntity.status(500).build();
         }

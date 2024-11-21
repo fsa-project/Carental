@@ -67,6 +67,7 @@ public class AuthController {
         ResponseCookie responseCookie = ResponseCookie.from("refresh_token", refresh_token)
                 .httpOnly(true)
                 .secure(true)
+                .sameSite("None")
                 .path("/")
                 .maxAge(refreshTokenExpiration)
                 .build();
@@ -121,19 +122,20 @@ public class AuthController {
         res.setAccessToken(access_token);
 
         //create refresh token
-        String new_refresh_token = this.securityUtil.createRefreshToken(email, res);
-        this.userService.updateUserToken(new_refresh_token, email);
-
-        //set cookie
-        ResponseCookie responseCookie = ResponseCookie.from("refresh_token", new_refresh_token)
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(refreshTokenExpiration)
-                .build();
+//        String new_refresh_token = this.securityUtil.createRefreshToken(email, res);
+//        this.userService.updateUserToken(new_refresh_token, email);
+//
+//        //set cookie
+//        ResponseCookie responseCookie = ResponseCookie.from("refresh_token", new_refresh_token)
+//                .httpOnly(true)
+//                .secure(false)
+//                .sameSite("None")
+//                .path("/")
+//                .maxAge(refreshTokenExpiration)
+//                .build();
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, responseCookie.toString())
+                //.header(HttpHeaders.SET_COOKIE, responseCookie.toString())
                 .body(res);
     }
 
@@ -154,7 +156,7 @@ public class AuthController {
         ResponseCookie deleteCookie = ResponseCookie
                 .from("refresh_token", null)
                 .httpOnly(true)
-                .secure(true)
+                .secure(false)
                 .path("/")
                 .maxAge(0)
                 .build();

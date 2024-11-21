@@ -3,6 +3,7 @@ package vn.fsaproject.carental.config;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
@@ -10,6 +11,7 @@ import vn.fsaproject.carental.entities.Permission;
 import vn.fsaproject.carental.entities.Role;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.exception.IdInvalidException;
+import vn.fsaproject.carental.exception.PermissionException;
 import vn.fsaproject.carental.service.UserService;
 import vn.fsaproject.carental.utils.SecurityUtil;
 
@@ -42,10 +44,10 @@ public class PermissionInterceptor implements HandlerInterceptor {
                     boolean hasPermission = permissions.stream().anyMatch(item -> item.getApiPath().equals(path) && item.getMethod().equals(httpMethod));
 
                     if (!hasPermission) {
-                        throw new IdInvalidException("You are not allowed to access this resource");
+                        throw new PermissionException("You are not allowed to access this resource");
                     }
                 } else {
-                    throw new IdInvalidException("You are not allowed to access this resource");
+                    throw new PermissionException("You are not allowed to access this resource");
                 }
             }
         }
