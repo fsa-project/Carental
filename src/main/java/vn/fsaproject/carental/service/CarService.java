@@ -175,6 +175,22 @@ public class CarService {
         return carResponse;
     }
     public void handleDeleteCar(Long id) {
-        carRepository.deleteById(id);
+
+        // Lấy thông tin của xe từ cơ sở dữ liệu
+        Car car = carRepository.findById(id).orElseThrow(() -> new RuntimeException("Car not found"));
+
+        // Xóa tất cả hình ảnh liên quan đến xe trong hệ thống tệp
+        List<CarImage> carImages = car.getImages(); // Lấy danh sách hình ảnh liên quan
+        for (CarImage carImage : carImages) {
+            try {
+                Path filePath = Paths.get(carImage.getFilePath());
+                Files.deleteIfExists(filePath); // Xóa tệp nếu tồn tại
+            } catch (IOException e) {
+                log.error("Không thể xóa tệp: " + carImage.getFilePath(), e);
+            }
+        }
+
+        // Xóa thông tin xe và hình ảnh liên quan khỏi cơ sở dữ liệu
+        carRepository.delete(car); // Xóa xe và liên kết Cascade sẽ xóa các hình ảnh liên quan
     }
 }
