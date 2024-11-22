@@ -1,11 +1,15 @@
 package vn.fsaproject.carental.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import vn.fsaproject.carental.constant.BookingStatus;
 import vn.fsaproject.carental.constant.CarStatus;
 import vn.fsaproject.carental.dto.request.StartBookingDTO;
 import vn.fsaproject.carental.dto.response.BookingResponse;
+import vn.fsaproject.carental.dto.response.DataPaginationResponse;
+import vn.fsaproject.carental.dto.response.Meta;
 import vn.fsaproject.carental.entities.Booking;
 import vn.fsaproject.carental.entities.Car;
 import vn.fsaproject.carental.entities.User;
@@ -13,6 +17,8 @@ import vn.fsaproject.carental.mapper.BookingMapper;
 import vn.fsaproject.carental.repository.BookingRepository;
 import vn.fsaproject.carental.repository.CarRepository;
 import vn.fsaproject.carental.repository.UserRepository;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -46,7 +52,7 @@ public class BookingService {
         bookingRepository.save(booking);
         BookingResponse bookingResponse = bookingMapper.toBookingResponse(booking);
         bookingResponse.setId(booking.getId());
-        bookingResponse.setStatus(BookingStatus.PENDING_DEPOSIT.getMessage());
+        bookingResponse.setBookingStatus(BookingStatus.PENDING_DEPOSIT.getMessage());
         return bookingResponse;
     }
 
@@ -75,7 +81,7 @@ public class BookingService {
         booking.setBookingStatus(BookingStatus.CONFIRMED.getMessage());
         bookingRepository.save(booking);
         BookingResponse bookingResponse = bookingMapper.toBookingResponse(booking);
-        bookingResponse.setStatus(BookingStatus.CONFIRMED.getMessage());
+        bookingResponse.setBookingStatus(BookingStatus.CONFIRMED.getMessage());
         bookingResponse.setId(booking.getId());
         return bookingResponse;
     }
@@ -88,9 +94,22 @@ public class BookingService {
         bookingRepository.save(booking);
 
         BookingResponse bookingResponse = bookingMapper.toBookingResponse(booking);
-        bookingResponse.setStatus(BookingStatus.IN_PROGRESS.getMessage());
+        bookingResponse.setBookingStatus(BookingStatus.IN_PROGRESS.getMessage());
         bookingResponse.setId(booking.getId());
         return bookingResponse;
+    }
+    public DataPaginationResponse getUserBookings(Long userId, Pageable pageable) {
+        Page<Booking> bookings = bookingRepository.findByUserId(userId,pageable);
+        List<BookingResponse> bookingResponses = bookingMapper.toBookingResponses(bookings.getContent());
+        DataPaginationResponse response = new DataPaginationResponse();
+        Meta meta = new Meta();
+        meta.setPage(bookings.getNumber()+1);
+        meta.setSize(bookings.getSize());
+        meta.setPages(bookings.getTotalPages());
+        meta.setTotal(bookings.getTotalElements());
+        response.setMeta(meta);
+        response.setResult(bookingResponses);
+        return response;
     }
 
 }
