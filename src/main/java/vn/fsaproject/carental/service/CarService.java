@@ -92,10 +92,27 @@ public class CarService {
 
     }
 
+    public CarResponse handleGetCar(Long carId){
+        Car car = carRepository.findById(carId).orElseThrow(()-> new RuntimeException("Car not found"));
+        CarResponse response = carMapper.toCarResponse(car);
+        List<CarImage> images = car.getImages();
+        List<String> imagepaths = new ArrayList<>();
+        for (CarImage image: images){
+            String ImagePath = null;
+            if (!car.getImages().isEmpty()) {
+
+               ImagePath = "/api/images/" + Paths.get(image.getFilePath()).getFileName().toString();
+            }
+            imagepaths.add(ImagePath);
+        }
+        response.setImages(imagepaths);
+        return response;
+    }
+
     public DataPaginationResponse handleGetCars(Long userId, Pageable pageable){
         // Tạo đối tượng phân trang
         Page<Car> cars = carRepository.findByUserId(userId,pageable);
-        // Thêm thông tin vào CarResopnse
+        // Thêm thông tin vào CarResponse
         List<CarResponse> carResponses = new ArrayList<>();
         for (Car car : cars.getContent()) {
             String firstImagePath = null;
@@ -109,6 +126,7 @@ public class CarService {
             } else {
                 carResponse.setImages(new ArrayList<>());
             }
+            carResponse.setId(car.getId());
             carResponse.setCarStatus(car.getCarStatus());
             carResponses.add(carResponse);
         }
@@ -175,6 +193,22 @@ public class CarService {
         return carResponse;
     }
     public void handleDeleteCar(Long id) {
-        carRepository.deleteById(id);
+
+        // Lấy thông tin của xe từ cơ sở dữ liệu
+        Car car = carRepository.findById(id).orElseThrow(() -> new RuntimeException("Car not found"));
+
+        // Xóa tất cả hình ảnh liên quan đến xe trong hệ thống tệp
+        List<CarImage> carImages = car.getImages(); // Lấy danh sách hình ảnh liên quan
+        for (CarImage carImage : carImages) {
+            try {
+                Path filePath = Paths.get(carImage.getFilePath());
+                Files.deleteIfExists(filePath); // Xóa tệp nếu tồn tại
+            } catch (IOException e) {
+                log.error("Không thể xóa tệp: " + carImage.getFilePath(), e);
+            }
+        }
+
+        // Xóa thông tin xe và hình ảnh liên quan khỏi cơ sở dữ liệu
+        carRepository.delete(car); // Xóa xe và liên kết Cascade sẽ xóa các hình ảnh liên quan
     }
 }

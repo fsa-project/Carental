@@ -62,6 +62,16 @@ public class CarController {
         }
     }
 
+    @GetMapping("/car-detail/{id}")
+    public ResponseEntity<CarResponse> getUserCar(@PathVariable("id") Long id) {
+        try {
+            CarResponse carResponse = carService.handleGetCar(id);
+            return ResponseEntity.ok(carResponse);
+        } catch (RuntimeException exception) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
     @ApiMessage("Car update successfully!!!")
     @PutMapping(value = "/update/{carId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CarResponse> updateCar(
