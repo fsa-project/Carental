@@ -92,10 +92,27 @@ public class CarService {
 
     }
 
+    public CarResponse handleGetCar(Long carId){
+        Car car = carRepository.findById(carId).orElseThrow(()-> new RuntimeException("Car not found"));
+        CarResponse response = carMapper.toCarResponse(car);
+        List<CarImage> images = car.getImages();
+        List<String> imagepaths = new ArrayList<>();
+        for (CarImage image: images){
+            String ImagePath = null;
+            if (!car.getImages().isEmpty()) {
+
+               ImagePath = "/api/images/" + Paths.get(image.getFilePath()).getFileName().toString();
+            }
+            imagepaths.add(ImagePath);
+        }
+        response.setImages(imagepaths);
+        return response;
+    }
+
     public DataPaginationResponse handleGetCars(Long userId, Pageable pageable){
         // Tạo đối tượng phân trang
         Page<Car> cars = carRepository.findByUserId(userId,pageable);
-        // Thêm thông tin vào CarResopnse
+        // Thêm thông tin vào CarResponse
         List<CarResponse> carResponses = new ArrayList<>();
         for (Car car : cars.getContent()) {
             String firstImagePath = null;
