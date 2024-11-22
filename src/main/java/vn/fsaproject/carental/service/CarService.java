@@ -126,6 +126,7 @@ public class CarService {
             } else {
                 carResponse.setImages(new ArrayList<>());
             }
+            carResponse.setId(car.getId());
             carResponse.setCarStatus(car.getCarStatus());
             carResponses.add(carResponse);
         }
