@@ -16,7 +16,8 @@ public class UserService {
     }
 
     public User handleCreateUser(User user) {
-        user.setRole(this.roleService.findById(user.getRole().getId()));
+        user.setRole(this.roleService.findByName(user.getRole().getName()));
+        System.out.println(user.getRole().getName() + user.getRole().getDescription());
         return userRepository.save(user);
     }
 
