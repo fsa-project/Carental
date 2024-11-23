@@ -18,6 +18,9 @@ import vn.fsaproject.carental.repository.BookingRepository;
 import vn.fsaproject.carental.repository.CarRepository;
 import vn.fsaproject.carental.repository.UserRepository;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Slf4j
@@ -86,7 +89,8 @@ public class BookingService {
         return bookingResponse;
     }
     public BookingResponse startBooking(Long bookingId) {
-        Booking booking = bookingRepository.findById(bookingId).orElseThrow(()-> new RuntimeException("Booking not found"));
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(()-> new RuntimeException("Booking not found"));
         if (!booking.getBookingStatus().equals(BookingStatus.CONFIRMED.getMessage())){
             throw new RuntimeException("Booking is not in a state to be started");
         }
@@ -98,6 +102,54 @@ public class BookingService {
         bookingResponse.setId(booking.getId());
         return bookingResponse;
     }
+    public BookingResponse completeBooking(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(()-> new RuntimeException("Booking not found"));
+        if (!booking.getBookingStatus().equals(BookingStatus.IN_PROGRESS.getMessage())){
+            throw new RuntimeException("Booking is not in a state to be completed");
+        }
+        Car car = booking.getCar();
+        User user = booking.getUser();
+        if (car == null || user == null){
+            throw new RuntimeException("Car or User associate with booking is not available");
+        }
+        double rentalFee = calculateRentalFee(booking);
+        double remainFee = rentalFee - car.getDeposit();
+
+        if (user.getWallet() < remainFee){
+            throw new RuntimeException("User's balance not enough");
+        }
+        user.setWallet(user.getWallet() - remainFee);
+        userRepository.save(user);
+        car.setCarStatus(CarStatus.STOPPED.getMessage());
+
+        booking.setBookingStatus(BookingStatus.COMPLETED.getMessage());
+        bookingRepository.save(booking);
+        return bookingMapper.toBookingResponse(booking);
+    }
+    public void cancelBooking(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(()-> new RuntimeException("Booking not found"));
+        if (!booking.getBookingStatus().equals(BookingStatus.PENDING_DEPOSIT.getMessage())
+                && !booking.getBookingStatus().equals(BookingStatus.CONFIRMED.getMessage())){
+            throw new RuntimeException("Booking cannot be cancelled in this current state");
+        }
+        Car car = booking.getCar();
+        car.setCarStatus(CarStatus.AVAILABLE.getMessage());
+        bookingRepository.delete(booking);
+    }
+
+    private double calculateRentalFee(Booking booking) {
+        LocalDate startDate = booking.getStartDateTime().toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        LocalDate endDate = booking.getEndDateTime().toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        Long rentalDays = ChronoUnit.DAYS.between(startDate,endDate);
+        return rentalDays*booking.getCar().getBasePrice();
+    }
+
     public DataPaginationResponse getUserBookings(Long userId, Pageable pageable) {
         Page<Booking> bookings = bookingRepository.findByUserId(userId,pageable);
         List<BookingResponse> bookingResponses = bookingMapper.toBookingResponses(bookings.getContent());

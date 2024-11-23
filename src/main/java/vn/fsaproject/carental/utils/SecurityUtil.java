@@ -2,6 +2,7 @@ package vn.fsaproject.carental.utils;
 
 import com.nimbusds.jose.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
@@ -10,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import vn.fsaproject.carental.dto.response.ResLoginDTO;
 
 import javax.crypto.SecretKey;
@@ -139,6 +141,10 @@ public class SecurityUtil {
         Jwt jwt = (Jwt) authentication.getPrincipal();
         Map<String, Object> user = jwt.getClaim("user");
         return Long.valueOf(user.get("id").toString()); // Retrieve userId directly
+    }
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 
 //    public static boolean isAuthenticated() {
