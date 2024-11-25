@@ -13,4 +13,5 @@ public class CarResponse {
     private String address;
     private String carStatus;
     private List<String> images;
+    private List<String> documents;
 }

@@ -15,6 +15,7 @@ import vn.fsaproject.carental.dto.response.CarResponse;
 import vn.fsaproject.carental.dto.response.DataPaginationResponse;
 import vn.fsaproject.carental.dto.response.Meta;
 import vn.fsaproject.carental.entities.Car;
+import vn.fsaproject.carental.entities.CarDocument;
 import vn.fsaproject.carental.entities.CarImage;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.mapper.CarMapper;
@@ -51,20 +52,40 @@ public class CarService {
         this.carImageRepository = carImageRepository;
         this.userService = userService;
     }
-    public CarResponse handleCreateCar(CreateCarDTO carDTO, MultipartFile[] file) throws IOException {
+    public CarResponse handleCreateCar(CreateCarDTO carDTO, MultipartFile[] documents, MultipartFile[] images) throws IOException {
         // Lấy id người dùng đang trong phiên đăng nhập
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         log.info("Username: {}",authentication.getName());
         String username = authentication.getName();
         User user = userService.handleGetUserByUsername(username);
 
-        // Map các thông tin từ Request vào 1 car mới
+        // Map information from Request to a new car
         Car car = carMapper.toCar(carDTO);
         car.setUser(user);
         car.setCarStatus(CarStatus.AVAILABLE.getMessage());
+        List<CarDocument> carDocuments = new ArrayList<>();
         List<CarImage> carImages = new ArrayList<>();
 
-        for (MultipartFile multipartFile : file) {
+        // save document
+        if (documents != null) {
+            for (MultipartFile document : documents) {
+                String fileName = UUID.randomUUID() + "_" + document.getOriginalFilename();
+                Path filePath = Paths.get(uploadDir, "documents", fileName);
+                Files.createDirectories(filePath.getParent());
+                Files.write(filePath, document.getBytes());
+
+                CarDocument carDocument = new CarDocument();
+                carDocument.setDocumentName(document.getOriginalFilename());
+                carDocument.setFilePath(filePath.toString());
+                carDocument.setFileType(document.getContentType());
+                carDocument.setCar(car);
+                carDocuments.add(carDocument);
+            }
+        }
+        car.setDocuments(carDocuments);
+
+        // save image
+        for (MultipartFile multipartFile : images) {
             String fileName = UUID.randomUUID() + "_" + multipartFile.getOriginalFilename();
             Path filePath = Paths.get(uploadDir, fileName);
             Files.createDirectories(filePath.getParent());
@@ -85,8 +106,15 @@ public class CarService {
         imagePaths = savedCar.getImages().stream()
                 .map(carImage -> Paths.get(carImage.getFilePath()).getFileName().toString())
                 .collect(Collectors.toList());
+
+        List<String> documentPaths;
+        documentPaths = savedCar.getDocuments().stream()
+                .map(carDocument -> Paths.get(carDocument.getFilePath()).getFileName().toString())
+                .collect(Collectors.toList());
+
         CarResponse response = carMapper.toCarResponse(savedCar);
         response.setImages(imagePaths);
+        response.setDocuments(documentPaths);
         response.setCarStatus(CarStatus.AVAILABLE.getMessage());
         return response;
 
@@ -144,7 +172,7 @@ public class CarService {
 
     public CarResponse handleUpdateCar(
             UpdateCarDTO carDTO,
-            MultipartFile[] files,
+            MultipartFile[] images,
             Long carId,
             Long userId
     ) throws IOException {
@@ -168,7 +196,7 @@ public class CarService {
             carImageRepository.delete(oldImage);
         }
         // thêm lại các ảnh được update
-        for (MultipartFile file : files) {
+        for (MultipartFile file : images) {
             String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
             Path filePath = Paths.get(uploadDir, fileName);
 

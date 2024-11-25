@@ -40,7 +40,16 @@ public class RoleController {
     @PutMapping
     @ApiMessage("update")
     public ResponseEntity<Role> update(@RequestBody Role role) {
+
+
+        if (role.getPermissions() != null) {
+            List<Long> reqPermissions = role.getPermissions().stream().map(Permission::getId)
+                    .collect(Collectors.toList());
+            List<Permission> dbPermissions = this.permissionService.findByIdIn(reqPermissions);
+            role.setPermissions(dbPermissions);
+        }
         this.roleService.update(role);
+
         return ResponseEntity.status(HttpStatus.OK).body(role);
     }
 
