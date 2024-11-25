@@ -4,11 +4,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import vn.fsaproject.carental.entities.Car;
-
-import java.util.List;
+import vn.fsaproject.carental.dto.response.BookingResponse;
+import vn.fsaproject.carental.entities.Booking;
 
 @Repository
-public interface CarRepository extends JpaRepository<Car, Long> {
-    Page<Car> findByUserId(Long userId, Pageable pageable);
+public interface BookingRepository extends JpaRepository<Booking, Long> {
+    Page<Booking> findByUserId(Long userId, Pageable pageable);
 }

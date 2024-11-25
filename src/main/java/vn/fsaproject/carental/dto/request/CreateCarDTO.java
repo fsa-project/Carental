@@ -23,5 +23,8 @@ public class CreateCarDTO {
     private String address;
     private String additionalFunctions;
     private String description;
+    private String termsOfUse;
     private List<String> images;
+    private List<String> documents;
+
 }

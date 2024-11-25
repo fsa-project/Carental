@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import vn.fsaproject.carental.dto.request.UpdateProfileDTO;
 import vn.fsaproject.carental.dto.response.UserResponse;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.exception.IdInvalidException;
@@ -57,8 +58,8 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK).body(this.userService.handleAllUser());
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@RequestBody User user) {
-        return ResponseEntity.ok(this.userService.handleUpdateUser(user));
+    @PutMapping("/update/{id}")
+    public ResponseEntity<UserResponse> updateUser(@RequestBody UpdateProfileDTO request, @PathVariable long id) throws IdInvalidException {
+        return ResponseEntity.ok(this.userService.handleUpdateUser(request,id));
     }
 }

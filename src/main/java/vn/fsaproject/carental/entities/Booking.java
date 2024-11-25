@@ -25,7 +25,7 @@ public class Booking {
     private Date endDateTime;
     private String driversInformation;
     private String paymentMethod;
-    private String status;
+    private String bookingStatus;
 
     // Getters and setters
 
@@ -85,11 +85,19 @@ public class Booking {
         this.paymentMethod = paymentMethod;
     }
 
-    public String getStatus() {
-        return status;
+    public String getBookingStatus() {
+        return bookingStatus;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public void setBookingStatus(String bookingStatus) {
+        this.bookingStatus = bookingStatus;
+    }
+
+    public Feedback getFeedback() {
+        return feedback;
+    }
+
+    public void setFeedback(Feedback feedback) {
+        this.feedback = feedback;
     }
 }
