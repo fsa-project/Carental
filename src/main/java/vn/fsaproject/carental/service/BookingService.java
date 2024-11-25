@@ -186,7 +186,6 @@ public class BookingService {
         car.setCarStatus(CarStatus.AVAILABLE.getMessage());
         return bookingMapper.toBookingResponse(booking);
     }
-
     private double calculateRentalFee(Booking booking) {
         LocalDate startDate = booking.getStartDateTime().toInstant()
                 .atZone(ZoneId.systemDefault())
@@ -197,7 +196,6 @@ public class BookingService {
         long rentalDays = ChronoUnit.DAYS.between(startDate,endDate);
         return rentalDays*booking.getCar().getBasePrice();
     }
-
     public DataPaginationResponse getUserBookings(Long userId, Pageable pageable) {
         Page<Booking> bookings = bookingRepository.findByUserId(userId,pageable);
         List<BookingResponse> bookingResponses = bookingMapper.toBookingResponses(bookings.getContent());
