@@ -39,9 +39,12 @@ public class BookingController {
         }
     }
     @PostMapping("/confirm/{bookingId}")
-    public ResponseEntity<BookingResponse> confirmBooking(@PathVariable Long bookingId) {
+    public ResponseEntity<BookingResponse> confirmBooking(
+            @PathVariable Long bookingId,
+            @RequestParam String paymentMethod
+    ) {
         try {
-            BookingResponse response = bookingService.confirmBooking(bookingId);
+            BookingResponse response = bookingService.confirmBooking(bookingId, paymentMethod);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(null);
@@ -57,9 +60,11 @@ public class BookingController {
         }
     }
     @PostMapping("/complete/{bookingId}")
-    public ResponseEntity<?> completeBooking(@PathVariable Long bookingId) {
+    public ResponseEntity<?> completeBooking(@PathVariable Long bookingId,
+                                             @RequestParam String paymentMethod
+    ) {
         try{
-            BookingResponse response = bookingService.completeBooking(bookingId);
+            BookingResponse response = bookingService.completeBooking(bookingId,paymentMethod);
             return ResponseEntity.ok(response);
         }catch (RuntimeException e) {
             log.error("Error completing booking: {}", e.getMessage());

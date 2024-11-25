@@ -2,6 +2,7 @@ package vn.fsaproject.carental.entities;
 
 import jakarta.persistence.*;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Table(name = "bookings")
@@ -20,6 +21,16 @@ public class Booking {
 
     @OneToOne(mappedBy = "booking")
     private Feedback feedback;
+    @OneToMany(mappedBy = "booking")
+    private List<Transaction> transactions;
+
+    public List<Transaction> getTransactions() {
+        return transactions;
+    }
+
+    public void setTransactions(List<Transaction> transactions) {
+        this.transactions = transactions;
+    }
 
     private Date startDateTime;
     private Date endDateTime;
