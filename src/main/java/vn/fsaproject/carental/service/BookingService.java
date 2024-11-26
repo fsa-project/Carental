@@ -40,152 +40,198 @@ public class BookingService {
                           CarRepository carRepository,
                           BookingMapper bookingMapper,
                           UserRepository userRepository,
-                          TransactionRepository transactionRepository
-    ) {
+                          TransactionRepository transactionRepository) {
         this.bookingRepository = bookingRepository;
         this.carRepository = carRepository;
         this.bookingMapper = bookingMapper;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
     }
+
+    // Main booking flow methods
     public BookingResponse createBooking(Long userId, Long carId, StartBookingDTO startBookingDTO) {
-        Car car = carRepository.findById(carId).orElseThrow(()-> new RuntimeException("Car not found"));
-        User user = userRepository.findById(userId).orElseThrow(()-> new RuntimeException("User not found"));
-        if (!car.getCarStatus().matches(CarStatus.AVAILABLE.getMessage())){
+        Car car = findCarById(carId);
+        User user = findUserById(userId);
+        validateCarAvailability(car);
+
+        Booking booking = initializeBooking(startBookingDTO, car, user);
+        bookingRepository.save(booking);
+
+        return buildBookingResponse(booking, BookingStatus.PENDING_DEPOSIT);
+    }
+
+    public BookingResponse confirmBooking(Long bookingId, String paymentMethod) {
+        Booking booking = findBookingById(bookingId);
+        validateBookingStatus(booking, BookingStatus.PENDING_DEPOSIT);
+
+        processDepositPayment(booking, paymentMethod);
+        updateCarStatus(booking.getCar(), CarStatus.BOOKED);
+
+        return buildBookingResponse(booking, BookingStatus.CONFIRMED);
+    }
+
+    public BookingResponse startBooking(Long bookingId) {
+        Booking booking = findBookingById(bookingId);
+        validateBookingStatus(booking, BookingStatus.CONFIRMED);
+
+        updateBookingStatus(booking, BookingStatus.IN_PROGRESS);
+
+        return buildBookingResponse(booking, BookingStatus.IN_PROGRESS);
+    }
+
+    public BookingResponse completeBooking(Long bookingId, String paymentMethod) {
+        Booking booking = findBookingById(bookingId);
+        validateBookingStatus(booking, BookingStatus.IN_PROGRESS);
+
+        processRentalPayment(booking, paymentMethod);
+        updateCarStatus(booking.getCar(), CarStatus.STOPPED);
+
+        return buildBookingResponse(booking, BookingStatus.COMPLETED);
+    }
+
+    public BookingResponse cancelBooking(Long bookingId) {
+        Booking booking = findBookingById(bookingId);
+        validateCancellableBookingStatus(booking);
+
+        updateBookingStatus(booking, BookingStatus.CANCELED);
+        updateCarStatus(booking.getCar(), CarStatus.AVAILABLE);
+
+        return buildBookingResponse(booking, BookingStatus.CANCELED);
+    }
+
+    public DataPaginationResponse getUserBookings(Long userId, Pageable pageable) {
+        Page<Booking> bookings = bookingRepository.findByUserId(userId, pageable);
+        return buildPaginatedResponse(bookings);
+    }
+
+    // Helper methods
+    private Car findCarById(Long carId) {
+        return carRepository.findById(carId)
+                .orElseThrow(() -> new RuntimeException("Car not found"));
+    }
+
+    private User findUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    private Booking findBookingById(Long bookingId) {
+        return bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+    }
+
+    private void validateCarAvailability(Car car) {
+        if (!car.getCarStatus().equals(CarStatus.AVAILABLE.getMessage())) {
             throw new RuntimeException("Car is not available");
         }
-        Booking booking = bookingMapper.toBooking(startBookingDTO);
-        booking.setCar(car);
-        booking.setPaymentMethod(null);
-        booking.setUser(user);
-        booking.setBookingStatus(BookingStatus.PENDING_DEPOSIT.getMessage());
-        bookingRepository.save(booking);
-        BookingResponse bookingResponse = bookingMapper.toBookingResponse(booking);
-        bookingResponse.setId(booking.getId());
-        bookingResponse.setBookingStatus(BookingStatus.PENDING_DEPOSIT.getMessage());
-        return bookingResponse;
     }
-    public BookingResponse confirmBooking(Long bookingId, String paymentMethod) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(()-> new RuntimeException("Booking not found"));
-        if (!booking.getBookingStatus().equals(BookingStatus.PENDING_DEPOSIT.getMessage())){
-            throw new RuntimeException("Booking is not in a state to be confirm");
-        }
-        Car car = booking.getCar();
-        car.setCarStatus(CarStatus.BOOKED.getMessage());
-        carRepository.save(car);
-        User user = booking.getUser();
-        if (user == null){
-            throw new RuntimeException("User's information not found for booking");
-        }
 
-        double requireDeposit = car.getDeposit();
-        if (user.getWallet() < requireDeposit){
-            throw new RuntimeException("User's balance not enough");
+    private void validateBookingStatus(Booking booking, BookingStatus expectedStatus) {
+        if (!booking.getBookingStatus().equals(expectedStatus.getMessage())) {
+            throw new RuntimeException("Booking is not in a state to be " + expectedStatus.name().toLowerCase());
         }
-        // Giao dịch thu tiền cọc
-        Transaction transaction = new Transaction();
-
-        //update userWallet
-
-        if (paymentMethod.equalsIgnoreCase("WALLET")){
-            booking.setPaymentMethod(paymentMethod);
-            transaction.setBooking(booking);
-            transaction.setUser(user);
-            transaction.setTransactionDate(LocalDateTime.now());
-            transaction.setTransactionType(TransactionType.DEPOSIT);
-            transaction.setAmount(-requireDeposit);// trừ tiền trong userWallet
-            transaction.setDescription("Deposit has been payed");
-            transactionRepository.save(transaction);
-            user.setWallet(user.getWallet() - requireDeposit);
-            userRepository.save(user);
-        }
-
-        booking.setBookingStatus(BookingStatus.CONFIRMED.getMessage());
-        bookingRepository.save(booking);
-        BookingResponse bookingResponse = bookingMapper.toBookingResponse(booking);
-        bookingResponse.setBookingStatus(BookingStatus.CONFIRMED.getMessage());
-        bookingResponse.setId(booking.getId());
-        return bookingResponse;
     }
-    public BookingResponse startBooking(Long bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(()-> new RuntimeException("Booking not found"));
-        if (!booking.getBookingStatus().equals(BookingStatus.CONFIRMED.getMessage())){
-            throw new RuntimeException("Booking is not in a state to be started");
-        }
-        booking.setPaymentMethod(null);
-        booking.setBookingStatus(BookingStatus.IN_PROGRESS.getMessage());
-        bookingRepository.save(booking);
 
-        BookingResponse bookingResponse = bookingMapper.toBookingResponse(booking);
-        bookingResponse.setBookingStatus(BookingStatus.IN_PROGRESS.getMessage());
-        bookingResponse.setId(booking.getId());
-        return bookingResponse;
-    }
-    public BookingResponse completeBooking(Long bookingId, String paymentMethod) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(()-> new RuntimeException("Booking not found"));
-        if (!booking.getBookingStatus().equals(BookingStatus.IN_PROGRESS.getMessage())){
-            throw new RuntimeException("Booking is not in a state to be completed");
-        }
-        Car car = booking.getCar();
-        User user = booking.getUser();
-        if (car == null || user == null){
-            throw new RuntimeException("Car or User associate with booking is not available");
-        }
-        double rentalFee = calculateRentalFee(booking);
-        double remainFee = rentalFee - car.getDeposit();
-
-        if (user.getWallet() < remainFee){
-            throw new RuntimeException("User's balance not enough");
-        }
-
-        Transaction rentalTransaction = new Transaction();
-
-        car.setCarStatus(CarStatus.STOPPED.getMessage());
-        if (paymentMethod.equalsIgnoreCase("WALLET")){
-            booking.setPaymentMethod(paymentMethod);
-            // Giao dịch trả tiền thuê xe theo ngày
-            rentalTransaction.setBooking(booking);
-            rentalTransaction.setUser(user);
-            rentalTransaction.setTransactionDate(LocalDateTime.now());
-            rentalTransaction.setTransactionType(TransactionType.PAYMENT);
-            rentalTransaction.setAmount(-rentalFee); // trừ tiền trong userWallet
-            rentalTransaction.setDescription("Payment has been payed");
-            // Giao dịch trả lại tiền cọc
-            Transaction refundTransaction = new Transaction();
-            refundTransaction.setBooking(booking);
-            refundTransaction.setUser(user);
-            refundTransaction.setTransactionDate(LocalDateTime.now());
-            refundTransaction.setTransactionType(TransactionType.REFUND);
-            refundTransaction.setAmount(car.getDeposit());// trả lại tiền cọc
-            refundTransaction.setDescription("Payment has been payed");
-
-            // Lưu giao dịch vào DB
-            transactionRepository.save(refundTransaction);
-            transactionRepository.save(rentalTransaction);
-
-            //update userWallet
-            user.setWallet(user.getWallet() - remainFee);
-            userRepository.save(user);
-        }
-        booking.setBookingStatus(BookingStatus.COMPLETED.getMessage());
-        bookingRepository.save(booking);
-        return bookingMapper.toBookingResponse(booking);
-    }
-    public BookingResponse cancelBooking(Long bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(()-> new RuntimeException("Booking not found"));
-        if (!booking.getBookingStatus().equals(BookingStatus.PENDING_DEPOSIT.getMessage())
-                && !booking.getBookingStatus().equals(BookingStatus.CONFIRMED.getMessage())){
+    private void validateCancellableBookingStatus(Booking booking) {
+        if (!booking.getBookingStatus().equals(BookingStatus.PENDING_DEPOSIT.getMessage()) &&
+                !booking.getBookingStatus().equals(BookingStatus.CONFIRMED.getMessage())) {
             throw new RuntimeException("Booking cannot be cancelled in this current state");
         }
-        booking.setBookingStatus(BookingStatus.CANCELED.getMessage());
-        Car car = booking.getCar();
-        car.setCarStatus(CarStatus.AVAILABLE.getMessage());
-        return bookingMapper.toBookingResponse(booking);
     }
+
+    private Booking initializeBooking(StartBookingDTO dto, Car car, User user) {
+        Booking booking = bookingMapper.toBooking(dto);
+        booking.setCar(car);
+        booking.setUser(user);
+        booking.setBookingStatus(BookingStatus.PENDING_DEPOSIT.getMessage());
+        return booking;
+    }
+
+    private void processDepositPayment(Booking booking, String paymentMethod) {
+        User user = booking.getUser();
+        Car car = booking.getCar();
+        double depositAmount = car.getDeposit();
+
+        if (user.getWallet() < depositAmount) {
+            throw new RuntimeException("Insufficient wallet balance for deposit");
+        }
+
+        if (paymentMethod.equalsIgnoreCase("WALLET")) {
+            deductWalletBalance(user, depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
+            booking.setPaymentMethod(paymentMethod);
+        }
+    }
+
+    private void processRentalPayment(Booking booking, String paymentMethod) {
+        User user = booking.getUser();
+        Car car = booking.getCar();
+        double rentalFee = calculateRentalFee(booking);
+        double remainingFee = rentalFee - car.getDeposit();
+
+        if (user.getWallet() < remainingFee) {
+            throw new RuntimeException("Insufficient wallet balance for rental payment");
+        }
+
+        if (paymentMethod.equalsIgnoreCase("WALLET")) {
+            deductWalletBalance(user, remainingFee, TransactionType.PAYMENT, "Rental payment processed");
+            refundWalletBalance(user, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
+            booking.setPaymentMethod(paymentMethod);
+        }
+    }
+
+    private void deductWalletBalance(User user, double amount, TransactionType type, String description) {
+        user.setWallet(user.getWallet() - amount);
+        userRepository.save(user);
+        recordTransaction(user, amount, type, description);
+    }
+
+    private void refundWalletBalance(User user, double amount, TransactionType type, String description) {
+        user.setWallet(user.getWallet() + amount);
+        userRepository.save(user);
+        recordTransaction(user, amount, type, description);
+    }
+
+    private void recordTransaction(User user, double amount, TransactionType type, String description) {
+        Transaction transaction = new Transaction();
+        transaction.setUser(user);
+        transaction.setTransactionDate(LocalDateTime.now());
+        transaction.setTransactionType(type);
+        transaction.setAmount(amount);
+        transaction.setDescription(description);
+        transactionRepository.save(transaction);
+    }
+
+    private void updateCarStatus(Car car, CarStatus status) {
+        car.setCarStatus(status.getMessage());
+        carRepository.save(car);
+    }
+
+    private void updateBookingStatus(Booking booking, BookingStatus status) {
+        booking.setBookingStatus(status.getMessage());
+        bookingRepository.save(booking);
+    }
+
+    private BookingResponse buildBookingResponse(Booking booking, BookingStatus status) {
+        BookingResponse response = bookingMapper.toBookingResponse(booking);
+        response.setBookingStatus(status.getMessage());
+        response.setId(booking.getId());
+        return response;
+    }
+
+    private DataPaginationResponse buildPaginatedResponse(Page<Booking> bookings) {
+        List<BookingResponse> responses = bookingMapper.toBookingResponses(bookings.getContent());
+        Meta meta = new Meta();
+        meta.setPage(bookings.getNumber() + 1);
+        meta.setSize(bookings.getSize());
+        meta.setPages(bookings.getTotalPages());
+        meta.setTotal(bookings.getTotalElements());
+
+        DataPaginationResponse response = new DataPaginationResponse();
+        response.setMeta(meta);
+        response.setResult(responses);
+        return response;
+    }
+
     private double calculateRentalFee(Booking booking) {
         LocalDate startDate = booking.getStartDateTime().toInstant()
                 .atZone(ZoneId.systemDefault())
@@ -193,20 +239,7 @@ public class BookingService {
         LocalDate endDate = booking.getEndDateTime().toInstant()
                 .atZone(ZoneId.systemDefault())
                 .toLocalDate();
-        long rentalDays = ChronoUnit.DAYS.between(startDate,endDate);
-        return rentalDays*booking.getCar().getBasePrice();
-    }
-    public DataPaginationResponse getUserBookings(Long userId, Pageable pageable) {
-        Page<Booking> bookings = bookingRepository.findByUserId(userId,pageable);
-        List<BookingResponse> bookingResponses = bookingMapper.toBookingResponses(bookings.getContent());
-        DataPaginationResponse response = new DataPaginationResponse();
-        Meta meta = new Meta();
-        meta.setPage(bookings.getNumber()+1);
-        meta.setSize(bookings.getSize());
-        meta.setPages(bookings.getTotalPages());
-        meta.setTotal(bookings.getTotalElements());
-        response.setMeta(meta);
-        response.setResult(bookingResponses);
-        return response;
+        long rentalDays = ChronoUnit.DAYS.between(startDate, endDate);
+        return rentalDays * booking.getCar().getBasePrice();
     }
 }

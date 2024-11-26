@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("role")
+@RequestMapping("/role")
 public class RoleController {
     private final RoleService roleService;
     private final PermissionService permissionService;
@@ -23,7 +23,7 @@ public class RoleController {
         this.permissionService = permissionService;
     }
 
-    @PostMapping
+    @PostMapping("/create")
     @ApiMessage("create new role")
     public ResponseEntity<Role> create(@RequestBody Role role) {
         this.roleService.create(role);

@@ -71,12 +71,12 @@ public class BookingController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-    @DeleteMapping("/cancel/{bookingId}")
+    @PostMapping("/cancel/{bookingId}")
     @ApiMessage("User has stop booking")
     public ResponseEntity<?> cancelBooking(@PathVariable Long bookingId) {
         try {
-            bookingService.cancelBooking(bookingId);
-            return ResponseEntity.noContent().build();
+            BookingResponse response = bookingService.cancelBooking(bookingId);
+            return ResponseEntity.ok(response);
         }catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
