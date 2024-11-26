@@ -60,5 +60,4 @@ public class BookingController {
         DataPaginationResponse response = bookingService.getUserBookings(userId,pageable);
         return ResponseEntity.ok(response);
     }
-
 }
