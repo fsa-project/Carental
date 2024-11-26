@@ -15,6 +15,7 @@ import vn.fsaproject.carental.dto.request.LoginDTO;
 import vn.fsaproject.carental.dto.response.ResLoginDTO;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.exception.IdInvalidException;
+import vn.fsaproject.carental.service.RoleService;
 import vn.fsaproject.carental.service.UserService;
 import vn.fsaproject.carental.utils.SecurityUtil;
 import vn.fsaproject.carental.utils.annotation.ApiMessage;
@@ -51,11 +52,11 @@ public class AuthController {
         User currentUser = this.userService.handleGetUserByUsername(loginDTO.getUsername());
 
         ResLoginDTO.UserLogin userLogin = currentUser == null ? new ResLoginDTO.UserLogin() :
-                new ResLoginDTO.UserLogin(currentUser.getId(), currentUser.getEmail(), currentUser.getName());
+                new ResLoginDTO.UserLogin(currentUser.getId(), currentUser.getEmail(), currentUser.getName(), currentUser.getRole());
         res.setUser(userLogin);
 
         //create a token
-        String access_token = this.securityUtil.createAccessToken(authentication.getName(), res.getUser());
+        String access_token = this.securityUtil.createAccessToken(authentication.getName(), res);
         res.setAccessToken(access_token);
 
         //create refresh token
@@ -66,6 +67,7 @@ public class AuthController {
         ResponseCookie responseCookie = ResponseCookie.from("refresh_token", refresh_token)
                 .httpOnly(true)
                 .secure(true)
+                .sameSite("None")
                 .path("/")
                 .maxAge(refreshTokenExpiration)
                 .build();
@@ -112,27 +114,28 @@ public class AuthController {
         User currentUserDB = this.userService.handleGetUserByUsername(email);
 
         ResLoginDTO.UserLogin userLogin = currentUserDB == null ? new ResLoginDTO.UserLogin() :
-                new ResLoginDTO.UserLogin(currentUserDB.getId(), currentUserDB.getEmail(), currentUserDB.getName());
+                new ResLoginDTO.UserLogin(currentUserDB.getId(), currentUserDB.getEmail(), currentUserDB.getName(), currentUserDB.getRole());
         res.setUser(userLogin);
 
         //create access token
-        String access_token = this.securityUtil.createAccessToken(email, res.getUser());
+        String access_token = this.securityUtil.createAccessToken(email, res);
         res.setAccessToken(access_token);
 
         //create refresh token
-        String new_refresh_token = this.securityUtil.createRefreshToken(email, res);
-        this.userService.updateUserToken(new_refresh_token, email);
-
-        //set cookie
-        ResponseCookie responseCookie = ResponseCookie.from("refresh_token", new_refresh_token)
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(refreshTokenExpiration)
-                .build();
+//        String new_refresh_token = this.securityUtil.createRefreshToken(email, res);
+//        this.userService.updateUserToken(new_refresh_token, email);
+//
+//        //set cookie
+//        ResponseCookie responseCookie = ResponseCookie.from("refresh_token", new_refresh_token)
+//                .httpOnly(true)
+//                .secure(false)
+//                .sameSite("None")
+//                .path("/")
+//                .maxAge(refreshTokenExpiration)
+//                .build();
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, responseCookie.toString())
+                //.header(HttpHeaders.SET_COOKIE, responseCookie.toString())
                 .body(res);
     }
 
@@ -153,7 +156,7 @@ public class AuthController {
         ResponseCookie deleteCookie = ResponseCookie
                 .from("refresh_token", null)
                 .httpOnly(true)
-                .secure(true)
+                .secure(false)
                 .path("/")
                 .maxAge(0)
                 .build();

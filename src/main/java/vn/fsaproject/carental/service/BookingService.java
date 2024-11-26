@@ -209,5 +209,4 @@ public class BookingService {
         response.setResult(bookingResponses);
         return response;
     }
-
 }

@@ -16,13 +16,17 @@ import java.util.List;
 public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final RoleService roleService;
 
-    public UserService(UserRepository userRepository, UserMapper userMapper) {
+    public UserService(UserRepository userRepository, UserMapper userMapper, RoleService roleService) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
+        this.roleService = roleService;
     }
 
     public User handleCreateUser(User user) {
+        user.setRole(this.roleService.findByName(user.getRole().getName()));
+        System.out.println(user.getRole().getName() + user.getRole().getDescription());
         return userRepository.save(user);
     }
 
@@ -40,7 +44,7 @@ public class UserService {
 
     public UserResponse handleUpdateUser(UpdateProfileDTO request, Long id) {
         User currentUser = this.handleUserById(id);
-        userMapper.updateUser(currentUser,request);
+        userMapper.updateUser(currentUser, request);
         UserResponse response = userMapper.toUserResponse(currentUser);
         userRepository.save(currentUser);
 
