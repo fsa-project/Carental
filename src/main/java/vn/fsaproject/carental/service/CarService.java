@@ -24,6 +24,7 @@ import vn.fsaproject.carental.mapper.CarMapper;
 import vn.fsaproject.carental.repository.BookingRepository;
 import vn.fsaproject.carental.repository.CarImageRepository;
 import vn.fsaproject.carental.repository.CarRepository;
+import vn.fsaproject.carental.repository.UserRepository;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -44,6 +45,7 @@ public class CarService {
     private final CarImageRepository carImageRepository;
     private final BookingRepository bookingRepository;
     private final UserService userService;
+    private final UserRepository userRepository;
 
     public CarService(
             @Value("${file.upload-dir}") String uploadDir,
@@ -51,14 +53,15 @@ public class CarService {
             CarMapper carMapper,
             CarImageRepository carImageRepository,
             UserService userService,
-            BookingRepository bookingRepository
-    ) {
+            BookingRepository bookingRepository,
+            UserRepository userRepository) {
         this.uploadDir = uploadDir;
         this.carRepository = carRepository;
         this.carMapper = carMapper;
         this.carImageRepository = carImageRepository;
         this.userService = userService;
         this.bookingRepository = bookingRepository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -228,7 +231,7 @@ public class CarService {
     private Car validateUserCarOwnership(Long carId, Long userId) {
         Car car = carRepository.findById(carId)
                 .orElseThrow(() -> new RuntimeException("Car not found"));
-        User user = userService.handleUserById(userId);
+        User user = userRepository.findById(carId).orElseThrow(() -> new RuntimeException("User not found"));
         if (!user.getCars().contains(car)) {
             throw new RuntimeException("Car does not belong to user");
         }

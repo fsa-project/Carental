@@ -45,7 +45,7 @@ public class UserController {
     }
 
     @GetMapping("{id}")
-    public ResponseEntity<User> getUser(@PathVariable long id) throws IdInvalidException {
+    public ResponseEntity<UserResponse> getUser(@PathVariable long id) throws IdInvalidException {
         if (id > 1500) {
             throw new IdInvalidException("Id invalid");
         }

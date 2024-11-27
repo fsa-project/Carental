@@ -36,7 +36,11 @@ public class RoleController {
 
         return ResponseEntity.status(HttpStatus.CREATED).body(role);
     }
-
+    @PutMapping("/add-permission")
+    public ResponseEntity<Role> addPermission(@RequestParam("roleId") Long roleId, @RequestParam Long permissionId) {
+        this.roleService.addPermission(roleId, permissionId);
+        return ResponseEntity.status(HttpStatus.OK).body(this.roleService.findById(roleId));
+    }
     @PutMapping
     @ApiMessage("update")
     public ResponseEntity<Role> update(@RequestBody Role role) {

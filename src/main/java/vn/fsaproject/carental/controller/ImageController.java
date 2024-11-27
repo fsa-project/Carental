@@ -1,6 +1,7 @@
 package vn.fsaproject.carental.controller;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
@@ -12,7 +13,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -36,6 +39,21 @@ public class ImageController {
             }
         } catch (MalformedURLException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    @GetMapping("/api/documents/{filename}")
+    public ResponseEntity<Resource> getDocument(@PathVariable("filename") String filename) {
+        Path filePath = Paths.get(uploadDir+"/documents").resolve(filename);
+        Resource resource = new FileSystemResource(filePath.toFile());
+
+        if (resource.exists() && filename.endsWith(".docx")) {
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                    .body(resource);
+        } else if (!resource.exists()) {
+            return ResponseEntity.notFound().build();
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
     }
 
