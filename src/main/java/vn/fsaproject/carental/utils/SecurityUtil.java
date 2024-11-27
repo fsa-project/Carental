@@ -142,10 +142,6 @@ public class SecurityUtil {
         Map<String, Object> user = jwt.getClaim("user");
         return Long.valueOf(user.get("id").toString()); // Retrieve userId directly
     }
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
 
 //    public static boolean isAuthenticated() {
 //        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
