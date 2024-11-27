@@ -85,17 +85,22 @@ public class CarService {
         car.setDocuments(carDocuments);
 
         // save image
-        for (MultipartFile multipartFile : images) {
-            String fileName = UUID.randomUUID() + "_" + multipartFile.getOriginalFilename();
-            Path filePath = Paths.get(uploadDir, fileName);
-            Files.createDirectories(filePath.getParent());
-            Files.write(filePath, multipartFile.getBytes());
+        if (images != null) {
+            for (MultipartFile multipartFile : images) {
+                String fileName = UUID.randomUUID() + "_" + multipartFile.getOriginalFilename();
+                Path filePath = Paths.get(uploadDir, fileName);
+                Files.createDirectories(filePath.getParent());
+                Files.write(filePath, multipartFile.getBytes());
 
-            CarImage carImage = new CarImage();
-            carImage.setFilePath(filePath.toString());
-            carImage.setCar(car); // Set the association
-            carImages.add(carImage);
+                CarImage carImage = new CarImage();
+                carImage.setFilePath(filePath.toString());
+                carImage.setCar(car); // Set the association
+                carImages.add(carImage);
+            }
+        } else {
+            System.out.println(">>> images is null");
         }
+
         car.setImages(carImages);
 
         // Lưu thông tin xe vào DB

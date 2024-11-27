@@ -30,14 +30,16 @@ public class CarController {
     }
 
     @ApiMessage("Car create successfully!!!")
-    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/create", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.APPLICATION_OCTET_STREAM_VALUE})
     public ResponseEntity<CarResponse> createCar(
             @RequestPart("metadata") CreateCarDTO carDTO, // application/jason
-            @RequestParam("documents") MultipartFile[] documents,
-            @RequestParam("images") MultipartFile[] images) {
+            @RequestParam(value = "documents", required = false) MultipartFile[] documents,
+            @RequestParam(value = "images", required = false) MultipartFile[] images
+    ) {
         try {
             CarResponse carResponse = carService.handleCreateCar(carDTO, documents, images);
             return ResponseEntity.status(HttpStatus.CREATED).body(carResponse);
+
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
