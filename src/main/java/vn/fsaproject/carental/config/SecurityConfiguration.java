@@ -45,8 +45,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(
                         auth ->
                                 auth
-                                        .requestMatchers("/users", "/users/register", "/auth/login", "/role", "/auth/refresh", "/auth/logout").permitAll()
-                                        .requestMatchers("/api/images/**").permitAll() // đường dẫn của ảnh
+                                        .requestMatchers("/cars/create", "/users", "/users/register", "/auth/login", "/role", "/auth/refresh", "/auth/logout", "/role/{id}").permitAll()
                                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults())

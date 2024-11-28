@@ -2,18 +2,26 @@ package vn.fsaproject.carental.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import vn.fsaproject.carental.constant.CarStatus;
 import vn.fsaproject.carental.dto.request.CreateCarDTO;
 import vn.fsaproject.carental.dto.request.UpdateCarDTO;
 import vn.fsaproject.carental.dto.response.CarResponse;
+import vn.fsaproject.carental.dto.response.DataPaginationResponse;
+import vn.fsaproject.carental.dto.response.Meta;
+import vn.fsaproject.carental.entities.Booking;
 import vn.fsaproject.carental.entities.Car;
+import vn.fsaproject.carental.entities.CarDocument;
 import vn.fsaproject.carental.entities.CarImage;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.mapper.CarMapper;
+import vn.fsaproject.carental.repository.BookingRepository;
 import vn.fsaproject.carental.repository.CarImageRepository;
 import vn.fsaproject.carental.repository.CarRepository;
 import vn.fsaproject.carental.repository.UserRepository;
@@ -22,9 +30,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -34,91 +43,198 @@ public class CarService {
     private final CarRepository carRepository;
     private final CarMapper carMapper;
     private final CarImageRepository carImageRepository;
+    private final BookingRepository bookingRepository;
     private final UserService userService;
+    private final UserRepository userRepository;
 
-    public CarService(@Value("${file.upload-dir}") String uploadDir,
-                      CarRepository carRepository,
-                      CarMapper carMapper,
-                      CarImageRepository carImageRepository,
-                      UserService userService
-    ) {
+    public CarService(
+            @Value("${file.upload-dir}") String uploadDir,
+            CarRepository carRepository,
+            CarMapper carMapper,
+            CarImageRepository carImageRepository,
+            UserService userService,
+            BookingRepository bookingRepository,
+            UserRepository userRepository) {
         this.uploadDir = uploadDir;
         this.carRepository = carRepository;
         this.carMapper = carMapper;
         this.carImageRepository = carImageRepository;
         this.userService = userService;
+        this.bookingRepository = bookingRepository;
+        this.userRepository = userRepository;
     }
-    public CarResponse handleCreateCar(CreateCarDTO carDTO, MultipartFile[] file) throws IOException {
-        // Lấy id người dùng đang trong phiên đăng nhập
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.info("Username: {}",authentication.getName());
-        String username = authentication.getName();
-        User user = userService.handleGetUserByUsername(username);
 
-        // Map các thông tin từ Request vào 1 car mới
+    /**
+     * Finds available cars for a specified time period with optional filters and pagination.
+     *
+     * @param startTime Time period start.
+     * @param endTime   Time period end.
+     * @param spec      Filter specifications.
+     * @param pageable  Pagination information.
+     * @return Paginated response with available cars.
+     */
+    public DataPaginationResponse findAvailableCars(
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            Specification<Car> spec,
+            Pageable pageable
+    ) {
+        Date startDate = Date.from(startTime.atZone(ZoneId.systemDefault()).toInstant());
+        Date endDate = Date.from(endTime.atZone(ZoneId.systemDefault()).toInstant());
+        List<Car> availableCars = carRepository.findAll(spec, pageable).stream()
+                .filter(car -> bookingRepository.findByCarId(car.getId())
+                        .stream()
+                        .noneMatch(booking -> booking.getStartDateTime().before(endDate) &&
+                                booking.getEndDateTime().after(startDate)))
+                .toList();
+
+        // Handle pagination and mapping
+        return createPaginatedResponse(pageable, availableCars);
+    }
+
+    public CarResponse updateToAvailable(Long carId) {
+        Car car = carRepository.findById(carId)
+                .orElseThrow(() -> new RuntimeException("Car not found"));
+        if (CarStatus.STOPPED.getMessage().equalsIgnoreCase(car.getCarStatus())) {
+            car.setCarStatus(CarStatus.AVAILABLE.getMessage());
+        }
+        carRepository.save(car);
+
+        return createCarResponse(car);
+    }
+
+    public CarResponse handleCreateCar(CreateCarDTO carDTO, MultipartFile[] documents, MultipartFile[] images) throws IOException {
+        User user = getCurrentAuthenticatedUser();
         Car car = carMapper.toCar(carDTO);
         car.setUser(user);
-        List<CarImage> carImages = new ArrayList<>();
+        car.setCarStatus(CarStatus.AVAILABLE.getMessage());
 
-        for (MultipartFile multipartFile : file) {
-            String fileName = UUID.randomUUID() + "_" + multipartFile.getOriginalFilename();
+        car.setDocuments(saveDocuments(car, documents));
+        car.setImages(saveImages(car, images));
+        carRepository.save(car);
+
+        return createCarResponse(car);
+    }
+
+    public CarResponse handleGetCar(Long carId) {
+        Car car = carRepository.findById(carId)
+                .orElseThrow(() -> new RuntimeException("Car not found"));
+        return createCarResponse(car);
+    }
+
+    public DataPaginationResponse handleGetCars(Long userId, Pageable pageable) {
+        Page<Car> cars = carRepository.findByUserId(userId, pageable);
+        return createPaginatedResponse(pageable, cars.getContent());
+    }
+
+    public CarResponse handleUpdateCar(UpdateCarDTO carDTO, MultipartFile[] images, Long carId, Long userId) throws IOException {
+        Car car = validateUserCarOwnership(carId, userId);
+        carMapper.updateCar(car, carDTO);
+
+        deleteCarImages(carId);
+        car.setImages(saveImages(car, images));
+
+        carRepository.save(car);
+        return createCarResponse(car);
+    }
+
+    public void handleDeleteCar(Long carId) {
+        Car car = carRepository.findById(carId)
+                .orElseThrow(() -> new RuntimeException("Car not found"));
+
+        deleteCarImages(carId);
+        carRepository.delete(car);
+    }
+
+    // Helper methods
+
+    private List<CarDocument> saveDocuments(Car car, MultipartFile[] documents) throws IOException {
+        if (documents == null) return new ArrayList<>();
+        List<CarDocument> carDocuments = new ArrayList<>();
+        for (MultipartFile document : documents) {
+            String fileName = UUID.randomUUID() + "_" + document.getOriginalFilename();
+            Path filePath = Paths.get(uploadDir, "documents", fileName);
+            Files.createDirectories(filePath.getParent());
+            Files.write(filePath, document.getBytes());
+
+            CarDocument carDocument = new CarDocument();
+            carDocument.setDocumentName(document.getOriginalFilename());
+            carDocument.setFilePath(filePath.toString());
+            carDocument.setFileType(document.getContentType());
+            carDocument.setCar(car);
+            carDocuments.add(carDocument);
+        }
+        return carDocuments;
+    }
+
+    private List<CarImage> saveImages(Car car, MultipartFile[] images) throws IOException {
+        List<CarImage> carImages = new ArrayList<>();
+        for (MultipartFile image : images) {
+            String fileName = UUID.randomUUID() + "_" + image.getOriginalFilename();
             Path filePath = Paths.get(uploadDir, fileName);
             Files.createDirectories(filePath.getParent());
-            Files.write(filePath, multipartFile.getBytes());
+            Files.write(filePath, image.getBytes());
 
             CarImage carImage = new CarImage();
             carImage.setFilePath(filePath.toString());
-            carImage.setCar(car); // Set the association
+            carImage.setCar(car);
             carImages.add(carImage);
         }
-        car.setImages(carImages);
+        return carImages;
+    }
 
-        // Lưu thông tin xe vào DB
-        Car savedCar = carRepository.save(car);
+    private void deleteCarImages(Long carId) {
+        List<CarImage> images = carImageRepository.findByCarId(carId);
+        images.forEach(image -> {
+            try {
+                Files.deleteIfExists(Paths.get(image.getFilePath()));
+            } catch (IOException e) {
+                log.error("Failed to delete file: {}", image.getFilePath(), e);
+            }
+        });
+        carImageRepository.deleteAll(images);
+    }
 
-        // Thêm đường dẫn cho ảnh vào CarResponse
-        List<String> imagePaths;
-        imagePaths = savedCar.getImages().stream()
-                .map(carImage -> Paths.get(carImage.getFilePath()).getFileName().toString())
-                .collect(Collectors.toList());
-        CarResponse response = carMapper.toCarResponse(savedCar);
-        response.setImages(imagePaths);
-
+    private CarResponse createCarResponse(Car car) {
+        CarResponse response = carMapper.toCarResponse(car);
+        response.setImages(car.getImages().stream()
+                .map(img -> "/api/images/" + Paths.get(img.getFilePath()).getFileName())
+                .toList());
+        response.setDocuments(car.getDocuments().stream()
+                .map(doc -> "/api/documents/" + Paths.get(doc.getFilePath()).getFileName())
+                .toList());
         return response;
-
     }
-    public List<CarResponse> handleGetCars(Long userId){
-        List<Car> cars = carRepository.findByUserId(userId);
-        List<CarResponse> carResponses = new ArrayList<>();
-        // Lặp qua các xe mà User có
-//        for (Car car : cars) {
-//            List<String> imagePaths = car.getImages().stream()
-//                    .map(carImage -> "/api/images/" + Paths.get(carImage.getFilePath()).getFileName().toString())
-//                    .collect(Collectors.toList());
-//
-//            CarResponse carResponse = carMapper.toCarResponse(car);
-//            carResponse.setImages(imagePaths);
-//            carResponses.add(carResponse);
-//        }
-        // Lặp qua các xe mà User có
-        for (Car car : cars) {
-            String firstImagePath = car.getImages().stream()
-                    .findFirst() // Lấy ảnh đầu tiên, nếu có
-                    .map(carImage -> "/api/images/" + Paths.get(carImage.getFilePath()).getFileName().toString())
-                    .orElse(null);
 
-            CarResponse carResponse = carMapper.toCarResponse(car);
-            carResponse.setImages(firstImagePath != null ? List.of(firstImagePath) : new ArrayList<>()); // Add the first image only
-            carResponses.add(carResponse);
+    private DataPaginationResponse createPaginatedResponse(Pageable pageable, List<Car> cars) {
+        List<CarResponse> responses = cars.stream()
+                .map(this::createCarResponse)
+                .toList();
+
+        Meta meta = new Meta();
+        meta.setPage(pageable.getPageNumber() + 1);
+        meta.setSize(pageable.getPageSize());
+        meta.setPages((int) Math.ceil((double) cars.size() / pageable.getPageSize()));
+        meta.setTotal(cars.size());
+
+        DataPaginationResponse response = new DataPaginationResponse();
+        response.setMeta(meta);
+        response.setResult(responses);
+        return response;
+    }
+
+    private User getCurrentAuthenticatedUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userService.handleGetUserByUsername(username);
+    }
+
+    private Car validateUserCarOwnership(Long carId, Long userId) {
+        Car car = carRepository.findById(carId)
+                .orElseThrow(() -> new RuntimeException("Car not found"));
+        User user = userRepository.findById(carId).orElseThrow(() -> new RuntimeException("User not found"));
+        if (!user.getCars().contains(car)) {
+            throw new RuntimeException("Car does not belong to user");
         }
-        return carResponses;
-    }
-    public CarResponse handleUpdateCar(UpdateCarDTO carDTO, Long id) {
-        Car car = carRepository.findById(id).orElseThrow(() -> new RuntimeException("Car not found"));
-        carMapper.updateCar(car, carDTO);
-        return carMapper.toCarResponse(car);
-    }
-    public void handleDeleteCar(Long id) {
-        carRepository.deleteById(id);
+        return car;
     }
 }

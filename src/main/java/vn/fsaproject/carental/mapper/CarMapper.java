@@ -17,9 +17,13 @@ import java.util.List;
 @org.mapstruct.Mapper(componentModel = "spring")
 public interface CarMapper {
     @Mapping(target = "images", ignore = true)
+    @Mapping(target = "documents", ignore = true)
     Car toCar(CreateCarDTO carDTO);
     @Mapping(target = "images", ignore = true)
+    @Mapping(target = "documents", ignore = true)
     CarResponse toCarResponse(Car car);
     List<CarResponse> toCarResponses(List<Car> cars);
+    @Mapping(target = "images",ignore = true)
+    @Mapping(target = "documents", ignore = true)
     void updateCar(@MappingTarget Car car, UpdateCarDTO request);
 }

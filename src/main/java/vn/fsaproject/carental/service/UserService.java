@@ -1,7 +1,16 @@
 package vn.fsaproject.carental.service;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import vn.fsaproject.carental.dto.request.RegisterDTO;
+import vn.fsaproject.carental.dto.request.UpdateCarDTO;
+import vn.fsaproject.carental.dto.request.UpdateProfileDTO;
+import vn.fsaproject.carental.dto.response.RoleResponse;
+import vn.fsaproject.carental.dto.response.UserResponse;
 import vn.fsaproject.carental.entities.User;
+import vn.fsaproject.carental.mapper.RoleMapper;
+import vn.fsaproject.carental.mapper.UserMapper;
+import vn.fsaproject.carental.repository.RoleRepository;
 import vn.fsaproject.carental.repository.UserRepository;
 
 import java.util.List;
@@ -9,14 +18,22 @@ import java.util.List;
 @Service
 public class UserService {
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
     private final RoleService roleService;
-    public UserService(UserRepository userRepository, RoleService roleService) {
+    private final RoleRepository roleRepository;
+    private final RoleMapper roleMapper;
+
+    public UserService(UserRepository userRepository, UserMapper userMapper, RoleService roleService, RoleRepository roleRepository, RoleMapper roleMapper) {
         this.userRepository = userRepository;
+        this.userMapper = userMapper;
         this.roleService = roleService;
+        this.roleRepository = roleRepository;
+        this.roleMapper = roleMapper;
     }
 
     public User handleCreateUser(User user) {
-        user.setRole(this.roleService.findById(user.getRole().getId()));
+        user.setRole(this.roleService.findByName(user.getRole().getName()));
+        System.out.println(user.getRole().getName() + user.getRole().getDescription());
         return userRepository.save(user);
     }
 
@@ -24,20 +41,31 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    public User handleUserById(long id) {
-        return userRepository.findById(id).orElse(null);
+    public UserResponse handleUserById(long id) {
+        User user = userRepository.findById(id).orElse(null);
+        UserResponse userResponse = userMapper.toUserResponse(user);
+        if (user != null) {
+            RoleResponse roleResponse = roleMapper.toRoleResponse(user.getRole());
+            userResponse.setRole(roleResponse);
+        }else {
+            userResponse.setRole(null);
+        }
+        return userResponse;
     }
 
     public List<User> handleAllUser() {
         return userRepository.findAll();
     }
 
-    public User handleUpdateUser(User reqUser) {
-        User currentUser = this.handleUserById(reqUser.getId());
+    public UserResponse handleUpdateUser(UpdateProfileDTO request, Long id) {
+        User currentUser = userRepository.findById(id).orElse(null);
+        userMapper.updateUser(currentUser, request);
+        UserResponse response = userMapper.toUserResponse(currentUser);
         if (currentUser != null) {
-            currentUser.setId(reqUser.getId());
+            userRepository.save(currentUser);
         }
-        return currentUser;
+
+        return response;
     }
 
     public User handleGetUserByUsername(String username) {
