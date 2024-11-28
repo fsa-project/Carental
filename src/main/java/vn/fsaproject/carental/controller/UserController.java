@@ -2,12 +2,15 @@ package vn.fsaproject.carental.controller;
 
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import vn.fsaproject.carental.dto.request.UpdateProfileDTO;
+import vn.fsaproject.carental.dto.response.DataPaginationResponse;
 import vn.fsaproject.carental.dto.response.UserResponse;
+import vn.fsaproject.carental.entities.Transaction;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.exception.IdInvalidException;
 import vn.fsaproject.carental.service.UserService;
@@ -50,6 +53,13 @@ public class UserController {
             throw new IdInvalidException("Id invalid");
         }
         return ResponseEntity.ok(this.userService.handleUserById(id));
+    }
+    @GetMapping("/transactions/{userId}")
+    public ResponseEntity<DataPaginationResponse> getUserTransactions(
+            @PathVariable("userId") long userId,
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(this.userService.getUserTransactions(userId, pageable));
     }
 
     @GetMapping

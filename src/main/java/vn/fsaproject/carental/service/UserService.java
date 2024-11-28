@@ -1,12 +1,14 @@
 package vn.fsaproject.carental.service;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import vn.fsaproject.carental.dto.request.RegisterDTO;
 import vn.fsaproject.carental.dto.request.UpdateCarDTO;
 import vn.fsaproject.carental.dto.request.UpdateProfileDTO;
-import vn.fsaproject.carental.dto.response.RoleResponse;
-import vn.fsaproject.carental.dto.response.UserResponse;
+import vn.fsaproject.carental.dto.response.*;
+import vn.fsaproject.carental.entities.Car;
+import vn.fsaproject.carental.entities.Transaction;
 import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.mapper.RoleMapper;
 import vn.fsaproject.carental.mapper.UserMapper;
@@ -40,7 +42,35 @@ public class UserService {
     public void handleDeleteUser(long id) {
         userRepository.deleteById(id);
     }
+    private TransactionResponse createTransactionResponse(Transaction transaction) {
+        TransactionResponse transactionResponse = new TransactionResponse();
+        transactionResponse.setAmount(transaction.getAmount());
+        transactionResponse.setDescription(transaction.getDescription());
+        transactionResponse.setTransactionDate(transaction.getTransactionDate());
+        transactionResponse.setTransactionType(transaction.getTransactionType());
+        return transactionResponse;
+    }
+    private DataPaginationResponse createPaginatedResponse(Pageable pageable, List<Transaction> transactions) {
+        List<TransactionResponse> responses = transactions.stream()
+                .map(this::createTransactionResponse)
+                .toList();
 
+        Meta meta = new Meta();
+        meta.setPage(pageable.getPageNumber() + 1);
+        meta.setSize(pageable.getPageSize());
+        meta.setPages((int) Math.ceil((double) transactions.size() / pageable.getPageSize()));
+        meta.setTotal(transactions.size());
+
+        DataPaginationResponse response = new DataPaginationResponse();
+        response.setMeta(meta);
+        response.setResult(responses);
+        return response;
+    }
+    public DataPaginationResponse getUserTransactions(long userId,Pageable pageable) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return createPaginatedResponse(pageable, user.getTransactions());
+    }
     public UserResponse handleUserById(long id) {
         User user = userRepository.findById(id).orElse(null);
         UserResponse userResponse = userMapper.toUserResponse(user);
