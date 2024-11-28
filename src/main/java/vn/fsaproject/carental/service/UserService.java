@@ -48,6 +48,8 @@ public class UserService {
         transactionResponse.setDescription(transaction.getDescription());
         transactionResponse.setTransactionDate(transaction.getTransactionDate());
         transactionResponse.setTransactionType(transaction.getTransactionType());
+        transactionResponse.setBookingId(transaction.getBooking().getId());
+        transactionResponse.setCarName(transaction.getBooking().getCar().getName());
         return transactionResponse;
     }
     private DataPaginationResponse createPaginatedResponse(Pageable pageable, List<Transaction> transactions) {
