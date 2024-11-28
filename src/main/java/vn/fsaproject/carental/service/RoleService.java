@@ -25,4 +25,12 @@ public class RoleService {
     public Role update(Role role) {
         return roleRepository.save(role);
     }
+
+    public void delete(Long id) {
+        roleRepository.deleteById(id);
+    }
+
+    public Role findByName(String roleName) {
+        return this.roleRepository.findByName(roleName);
+    }
 }

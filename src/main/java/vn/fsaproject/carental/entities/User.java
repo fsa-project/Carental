@@ -8,7 +8,6 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -34,8 +33,8 @@ public class User {
     private Double wallet;
     @Column(columnDefinition = "MEDIUMTEXT")
     private String refreshToken;
-
-
+    @OneToMany(mappedBy = "user")
+    List<Transaction> transactions;
     @ManyToOne
     @JoinColumn(name = "role_id") // Cột role_id là khóa ngoại trỏ tới bảng Role
     private Role role;

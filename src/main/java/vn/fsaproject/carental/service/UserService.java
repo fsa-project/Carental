@@ -1,7 +1,13 @@
 package vn.fsaproject.carental.service;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import vn.fsaproject.carental.dto.request.RegisterDTO;
+import vn.fsaproject.carental.dto.request.UpdateCarDTO;
+import vn.fsaproject.carental.dto.request.UpdateProfileDTO;
+import vn.fsaproject.carental.dto.response.UserResponse;
 import vn.fsaproject.carental.entities.User;
+import vn.fsaproject.carental.mapper.UserMapper;
 import vn.fsaproject.carental.repository.UserRepository;
 
 import java.util.List;
@@ -9,14 +15,18 @@ import java.util.List;
 @Service
 public class UserService {
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
     private final RoleService roleService;
-    public UserService(UserRepository userRepository, RoleService roleService) {
+
+    public UserService(UserRepository userRepository, UserMapper userMapper, RoleService roleService) {
         this.userRepository = userRepository;
+        this.userMapper = userMapper;
         this.roleService = roleService;
     }
 
     public User handleCreateUser(User user) {
-        user.setRole(this.roleService.findById(user.getRole().getId()));
+        user.setRole(this.roleService.findByName(user.getRole().getName()));
+        System.out.println(user.getRole().getName() + user.getRole().getDescription());
         return userRepository.save(user);
     }
 
@@ -32,12 +42,13 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public User handleUpdateUser(User reqUser) {
-        User currentUser = this.handleUserById(reqUser.getId());
-        if (currentUser != null) {
-            currentUser.setId(reqUser.getId());
-        }
-        return currentUser;
+    public UserResponse handleUpdateUser(UpdateProfileDTO request, Long id) {
+        User currentUser = this.handleUserById(id);
+        userMapper.updateUser(currentUser, request);
+        UserResponse response = userMapper.toUserResponse(currentUser);
+        userRepository.save(currentUser);
+
+        return response;
     }
 
     public User handleGetUserByUsername(String username) {
