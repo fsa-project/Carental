@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import vn.fsaproject.carental.dto.request.CreateCarDTO;
 import vn.fsaproject.carental.dto.request.UpdateCarDTO;
 import vn.fsaproject.carental.dto.request.UpdateProfileDTO;
+import vn.fsaproject.carental.dto.response.CarDetailResponse;
 import vn.fsaproject.carental.dto.response.CarResponse;
 import vn.fsaproject.carental.entities.Car;
 import vn.fsaproject.carental.entities.User;
@@ -22,6 +23,9 @@ public interface CarMapper {
     @Mapping(target = "images", ignore = true)
     @Mapping(target = "documents", ignore = true)
     CarResponse toCarResponse(Car car);
+    @Mapping(target = "images", ignore = true)
+    @Mapping(target = "documents", ignore = true)
+    CarDetailResponse toCarDetailResponse(Car car);
     List<CarResponse> toCarResponses(List<Car> cars);
     @Mapping(target = "images",ignore = true)
     @Mapping(target = "documents", ignore = true)

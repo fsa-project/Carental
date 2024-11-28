@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import vn.fsaproject.carental.dto.request.CreateCarDTO;
 import vn.fsaproject.carental.dto.request.UpdateCarDTO;
+import vn.fsaproject.carental.dto.response.CarDetailResponse;
 import vn.fsaproject.carental.dto.response.CarResponse;
 import vn.fsaproject.carental.dto.response.DataPaginationResponse;
 import vn.fsaproject.carental.entities.Car;
@@ -71,9 +72,9 @@ public class CarController {
     }
 
     @GetMapping("/car-detail/{id}")
-    public ResponseEntity<CarResponse> getUserCar(@PathVariable("id") Long id) {
+    public ResponseEntity<CarDetailResponse> getUserCar(@PathVariable("id") Long id) {
         try {
-            CarResponse carResponse = carService.handleGetCar(id);
+            CarDetailResponse carResponse = carService.handleGetCar(id);
             return ResponseEntity.ok(carResponse);
         } catch (RuntimeException exception) {
             return ResponseEntity.status(500).build();

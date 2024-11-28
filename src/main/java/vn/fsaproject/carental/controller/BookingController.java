@@ -1,5 +1,6 @@
 package vn.fsaproject.carental.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -41,10 +42,11 @@ public class BookingController {
     @PostMapping("/confirm/{bookingId}")
     public ResponseEntity<BookingResponse> confirmBooking(
             @PathVariable Long bookingId,
-            @RequestParam String paymentMethod
+            @RequestParam String paymentMethod,
+            HttpServletRequest request
     ) {
         try {
-            BookingResponse response = bookingService.confirmBooking(bookingId, paymentMethod);
+            BookingResponse response = bookingService.confirmBooking(bookingId, paymentMethod,request);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(null);

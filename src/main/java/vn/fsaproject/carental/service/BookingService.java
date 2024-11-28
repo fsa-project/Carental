@@ -1,9 +1,11 @@
 package vn.fsaproject.carental.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import vn.fsaproject.carental.config.VNPAYConfig;
 import vn.fsaproject.carental.constant.BookingStatus;
 import vn.fsaproject.carental.constant.CarStatus;
 import vn.fsaproject.carental.constant.TransactionType;
@@ -35,17 +37,21 @@ public class BookingService {
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private final BookingMapper bookingMapper;
+    private final VNPAYService vnpayService;
 
     public BookingService(BookingRepository bookingRepository,
                           CarRepository carRepository,
                           BookingMapper bookingMapper,
                           UserRepository userRepository,
-                          TransactionRepository transactionRepository) {
+                          TransactionRepository transactionRepository,
+                          VNPAYService vnpayService
+                          ) {
         this.bookingRepository = bookingRepository;
         this.carRepository = carRepository;
         this.bookingMapper = bookingMapper;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
+        this.vnpayService = vnpayService;
     }
 
     // Main booking flow methods
@@ -60,14 +66,15 @@ public class BookingService {
         return buildBookingResponse(booking, BookingStatus.PENDING_DEPOSIT);
     }
 
-    public BookingResponse confirmBooking(Long bookingId, String paymentMethod) {
+    public BookingResponse confirmBooking(Long bookingId, String paymentMethod, HttpServletRequest request) {
         Booking booking = findBookingById(bookingId);
         validateBookingStatus(booking, BookingStatus.PENDING_DEPOSIT);
 
-        processDepositPayment(booking, paymentMethod);
+        String url = processDepositPayment(booking, paymentMethod, request);
         updateCarStatus(booking.getCar(), CarStatus.BOOKED);
-
-        return buildBookingResponse(booking, BookingStatus.CONFIRMED);
+        BookingResponse response = buildBookingResponse(booking, BookingStatus.CONFIRMED);
+        response.setVnPayUrl(url);
+        return response;
     }
 
     public BookingResponse startBooking(Long bookingId) {
@@ -147,11 +154,12 @@ public class BookingService {
         return booking;
     }
 
-    private void processDepositPayment(Booking booking, String paymentMethod) {
+    private String processDepositPayment(Booking booking, String paymentMethod, HttpServletRequest request) {
+        String url = "";
         User user = booking.getUser();
         Car car = booking.getCar();
         double depositAmount = car.getDeposit();
-
+        int deposit = (int) depositAmount;
         if (user.getWallet() < depositAmount) {
             throw new RuntimeException("Insufficient wallet balance for deposit");
         }
@@ -160,6 +168,10 @@ public class BookingService {
             deductWalletBalance(user, depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
             booking.setPaymentMethod(paymentMethod);
         }
+        if (paymentMethod.equalsIgnoreCase("VNPAY")) {
+            url =  vnpayService.createOrder(request,deposit,"Thanh toan don hang:"+VNPAYConfig.getRandomNumber(8),VNPAYConfig.vnp_Returnurl);
+        }
+        return url;
     }
 
     private void processRentalPayment(Booking booking, String paymentMethod) {
@@ -177,6 +189,7 @@ public class BookingService {
             refundWalletBalance(user, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
             booking.setPaymentMethod(paymentMethod);
         }
+
     }
 
     private void deductWalletBalance(User user, double amount, TransactionType type, String description) {

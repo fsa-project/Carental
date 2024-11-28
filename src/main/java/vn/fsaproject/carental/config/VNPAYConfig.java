@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 public class VNPAYConfig {
     public static String vnp_PayUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
-    public static String vnp_Returnurl = "/vnpay-payment-return";
+    public static String vnp_Returnurl = "http://localhost:3000/tkspaying";
     public static String vnp_TmnCode ="77G5RG8K"; // kiểm tra email sau
     public static String vnp_Version = "2.1.0";
     public static String vnp_Command = "pay";

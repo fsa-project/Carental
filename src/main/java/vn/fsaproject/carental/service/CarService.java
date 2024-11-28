@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import vn.fsaproject.carental.constant.CarStatus;
 import vn.fsaproject.carental.dto.request.CreateCarDTO;
 import vn.fsaproject.carental.dto.request.UpdateCarDTO;
+import vn.fsaproject.carental.dto.response.CarDetailResponse;
 import vn.fsaproject.carental.dto.response.CarResponse;
 import vn.fsaproject.carental.dto.response.DataPaginationResponse;
 import vn.fsaproject.carental.dto.response.Meta;
@@ -117,10 +118,10 @@ public class CarService {
         return createCarResponse(car);
     }
 
-    public CarResponse handleGetCar(Long carId) {
+    public CarDetailResponse handleGetCar(Long carId) {
         Car car = carRepository.findById(carId)
                 .orElseThrow(() -> new RuntimeException("Car not found"));
-        return createCarResponse(car);
+        return createCarDetailResponse(car);
     }
 
     public DataPaginationResponse handleGetCars(Long userId, Pageable pageable) {
@@ -200,6 +201,16 @@ public class CarService {
 
     private CarResponse createCarResponse(Car car) {
         CarResponse response = carMapper.toCarResponse(car);
+        response.setImages(car.getImages().stream()
+                .map(img -> "/api/images/" + Paths.get(img.getFilePath()).getFileName())
+                .toList());
+        response.setDocuments(car.getDocuments().stream()
+                .map(doc -> "/api/documents/" + Paths.get(doc.getFilePath()).getFileName())
+                .toList());
+        return response;
+    }
+    private CarDetailResponse createCarDetailResponse(Car car) {
+        CarDetailResponse response = carMapper.toCarDetailResponse(car);
         response.setImages(car.getImages().stream()
                 .map(img -> "/api/images/" + Paths.get(img.getFilePath()).getFileName())
                 .toList());
