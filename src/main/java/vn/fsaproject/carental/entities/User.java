@@ -45,7 +45,4 @@ public class User {
     @OneToMany(mappedBy = "user")
     private List<Booking> bookings; // Dành cho vai trò Customer
 
-    @OneToMany(mappedBy = "user")
-    private List<Transaction> transactions;
-
 }
