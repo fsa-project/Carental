@@ -69,8 +69,8 @@ public class CarController {
         }
     }
 
-    @GetMapping("/car-detail/{id}")
-    public ResponseEntity<CarResponse> getUserCar(@PathVariable("id") Long id) {
+    @GetMapping("/user-cars/{carId}")
+    public ResponseEntity<CarResponse> getUserCar(@PathVariable("carId") Long id) {
         try {
             CarResponse carResponse = carService.handleGetCar(id);
             return ResponseEntity.ok(carResponse);
