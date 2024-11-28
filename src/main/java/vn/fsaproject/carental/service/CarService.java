@@ -65,7 +65,8 @@ public class CarService {
     }
 
     /**
-     * Finds available cars for a specified time period with optional filters and pagination.
+     * Finds available cars for a specified time period with optional filters and
+     * pagination.
      *
      * @param startTime Time period start.
      * @param endTime   Time period end.
@@ -77,8 +78,7 @@ public class CarService {
             LocalDateTime startTime,
             LocalDateTime endTime,
             Specification<Car> spec,
-            Pageable pageable
-    ) {
+            Pageable pageable) {
         Date startDate = Date.from(startTime.atZone(ZoneId.systemDefault()).toInstant());
         Date endDate = Date.from(endTime.atZone(ZoneId.systemDefault()).toInstant());
         List<Car> availableCars = carRepository.findAll(spec, pageable).stream()
@@ -103,7 +103,8 @@ public class CarService {
         return createCarResponse(car);
     }
 
-    public CarResponse handleCreateCar(CreateCarDTO carDTO, MultipartFile[] documents, MultipartFile[] images) throws IOException {
+    public CarResponse handleCreateCar(CreateCarDTO carDTO, MultipartFile[] documents, MultipartFile[] images)
+            throws IOException {
         User user = getCurrentAuthenticatedUser();
         Car car = carMapper.toCar(carDTO);
         car.setUser(user);
@@ -127,7 +128,8 @@ public class CarService {
         return createPaginatedResponse(pageable, cars.getContent());
     }
 
-    public CarResponse handleUpdateCar(UpdateCarDTO carDTO, MultipartFile[] images, Long carId, Long userId) throws IOException {
+    public CarResponse handleUpdateCar(UpdateCarDTO carDTO, MultipartFile[] images, Long carId, Long userId)
+            throws IOException {
         Car car = validateUserCarOwnership(carId, userId);
         carMapper.updateCar(car, carDTO);
 
@@ -149,7 +151,8 @@ public class CarService {
     // Helper methods
 
     private List<CarDocument> saveDocuments(Car car, MultipartFile[] documents) throws IOException {
-        if (documents == null) return new ArrayList<>();
+        if (documents == null)
+            return new ArrayList<>();
         List<CarDocument> carDocuments = new ArrayList<>();
         for (MultipartFile document : documents) {
             String fileName = UUID.randomUUID() + "_" + document.getOriginalFilename();

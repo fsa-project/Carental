@@ -43,11 +43,12 @@ public class CarController {
     }
 
     @ApiMessage("Car create successfully!!!")
-    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/create", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE,
+            MediaType.APPLICATION_OCTET_STREAM_VALUE })
     public ResponseEntity<CarResponse> createCar(
             @RequestPart("metadata") CreateCarDTO carDTO, // application/jason
-            @RequestParam("documents") MultipartFile[] documents,
-            @RequestParam("images") MultipartFile[] images) {
+            @RequestParam(value = "documents", required = false) MultipartFile[] documents,
+            @RequestParam(value = "images", required = false) MultipartFile[] images) {
         try {
             CarResponse carResponse = carService.handleCreateCar(carDTO, documents, images);
             return ResponseEntity.status(HttpStatus.CREATED).body(carResponse);
@@ -96,13 +97,13 @@ public class CarController {
                     .body(null);
         }
     }
+
     @GetMapping("/search")
     public ResponseEntity<DataPaginationResponse> getAvailableOrBookedCars(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDate endDate,
             @RequestParam(required = false) String address,
-            Pageable pageable
-            ) {
+            Pageable pageable) {
         Specification<Car> spec = (root, query, cb) -> {
             Predicate predicate = cb.conjunction(); // Default to no filtering
             // Filter by address if provided
@@ -114,14 +115,16 @@ public class CarController {
         };
         LocalDateTime startTime = startDate.atStartOfDay(); // Start of the day (00:00:00)
         LocalDateTime endTime = endDate.atTime(23, 59, 59); // End of the day (23:59:59)
-        DataPaginationResponse cars = carService.findAvailableCars(startTime,endTime,spec,pageable);
+        DataPaginationResponse cars = carService.findAvailableCars(startTime, endTime, spec, pageable);
         return ResponseEntity.ok(cars);
     }
+
     @PutMapping("/activate-car/{id}")
-    public ResponseEntity<CarResponse> activateCar(@PathVariable Long id){
+    public ResponseEntity<CarResponse> activateCar(@PathVariable Long id) {
         CarResponse carResponse = carService.updateToAvailable(id);
         return ResponseEntity.ok(carResponse);
     }
+
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Void> deleteCar(@PathVariable("id") Long id) {
         this.carService.handleDeleteCar(id);

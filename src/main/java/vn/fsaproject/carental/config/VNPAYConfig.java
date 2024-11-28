@@ -6,12 +6,13 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-
-public class VNPayConfig {
+public class VNPAYConfig {
     public static String vnp_PayUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
     public static String vnp_Returnurl = "/vnpay-payment-return";
-    public static String vnp_TmnCode = "QORJQMVV"; // kiểm tra email sau
-    public static String vnp_HashSecret = "ECMJKCLM58SIIYPLUJ46A0SP2P8W32ZC"; // khi đăng ký Test
+    public static String vnp_TmnCode ="77G5RG8K"; // kiểm tra email sau
+    public static String vnp_Version = "2.1.0";
+    public static String vnp_Command = "pay";
+    public static String vnp_HashSecret = "MQLK8DTLS3GUMFZO46HQWH9SUMD3UD19"; // khi đăng ký Test
     public static String vnp_apiUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 
 
