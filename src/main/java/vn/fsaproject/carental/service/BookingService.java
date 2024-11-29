@@ -58,6 +58,9 @@ public class BookingService {
     public BookingResponse createBooking(Long userId, Long carId, StartBookingDTO startBookingDTO) {
         Car car = findCarById(carId);
         User user = findUserById(userId);
+        if (user.getCars().contains(car)){
+            throw new RuntimeException("Can not rent your own car ^.^");
+        }
         validateCarAvailability(car);
 
         Booking booking = initializeBooking(startBookingDTO, car, user);
@@ -170,6 +173,8 @@ public class BookingService {
         }
         if (paymentMethod.equalsIgnoreCase("VNPAY")) {
             url =  vnpayService.createOrder(request,deposit,"Thanh toan don hang:"+VNPAYConfig.getRandomNumber(8),VNPAYConfig.vnp_Returnurl);
+            booking.setPaymentMethod(paymentMethod);
+            deductWalletBalance(user,booking,depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
         }
         return url;
     }
@@ -192,16 +197,24 @@ public class BookingService {
 
     }
 
-    private void deductWalletBalance(User user,Booking booking, double amount, TransactionType type, String description) {
-        user.setWallet(user.getWallet() - amount);
-        userRepository.save(user);
-        recordTransaction(user,booking, amount, type, description);
+    private void deductWalletBalance(User customer,Booking booking, double amount, TransactionType type, String description) {
+        customer.setWallet(customer.getWallet() - amount);
+        User owner = booking.getCar().getUser();
+        owner.setWallet(owner.getWallet() + amount);
+        userRepository.save(owner);
+        userRepository.save(customer);
+        recordTransaction(customer,booking, -amount, type, description);
+        recordTransaction(owner,booking, amount, type, description);
     }
 
-    private void refundWalletBalance(User user,Booking booking, double amount, TransactionType type, String description) {
-        user.setWallet(user.getWallet() + amount);
-        userRepository.save(user);
-        recordTransaction(user,booking, amount, type, description);
+    private void refundWalletBalance(User customer,Booking booking, double amount, TransactionType type, String description) {
+        customer.setWallet(customer.getWallet() + amount);
+        User owner = booking.getCar().getUser();
+        owner.setWallet(owner.getWallet() - amount);
+        userRepository.save(owner);
+        userRepository.save(customer);
+        recordTransaction(owner,booking, -amount, type, description);
+        recordTransaction(customer,booking, amount, type, description);
     }
 
     private void recordTransaction(User user,Booking booking, double amount, TransactionType type, String description) {
