@@ -71,10 +71,19 @@ public class BookingService {
         validateBookingStatus(booking, BookingStatus.PENDING_DEPOSIT);
 
         String url = processDepositPayment(booking, paymentMethod, request);
-        updateCarStatus(booking.getCar(), CarStatus.BOOKED);
-        BookingResponse response = buildBookingResponse(booking, BookingStatus.CONFIRMED);
+        //updateCarStatus(booking.getCar(), CarStatus.BOOKED);
+        BookingResponse response = buildBookingResponse(booking, BookingStatus.PENDING_DEPOSIT);
         response.setVnPayUrl(url);
         return response;
+    }
+
+    public BookingResponse updateBookingStatus(Long bookingId) {
+        Booking booking = findBookingById(bookingId);
+        validateBookingStatus(booking, BookingStatus.PENDING_DEPOSIT);
+
+        updateCarStatus(booking.getCar(), CarStatus.BOOKED);
+        updateBookingStatus(booking, BookingStatus.CONFIRMED);
+        return buildBookingResponse(booking, BookingStatus.CONFIRMED);
     }
 
     public BookingResponse startBooking(Long bookingId) {

@@ -3,7 +3,7 @@ package vn.fsaproject.carental.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.fsaproject.carental.dto.request.StartBookingDTO;
@@ -13,7 +13,8 @@ import vn.fsaproject.carental.service.BookingService;
 import vn.fsaproject.carental.utils.SecurityUtil;
 import vn.fsaproject.carental.utils.annotation.ApiMessage;
 
-import java.util.List;
+import java.util.Map;
+
 @Slf4j
 @RestController
 @RequestMapping("/bookings")
@@ -52,6 +53,18 @@ public class BookingController {
             return ResponseEntity.badRequest().body(null);
         }
     }
+
+    @PostMapping("/confirm2/{bookingId}")
+    public ResponseEntity<BookingResponse> updatePaymentStatus(@PathVariable Long bookingId, @RequestParam String status) {
+
+        try {
+            BookingResponse response = bookingService.updateBookingStatus(bookingId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
     @PostMapping("/start/{bookingId}")
     public ResponseEntity<BookingResponse> startBooking(@PathVariable Long bookingId) {
         try {
