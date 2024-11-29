@@ -12,4 +12,6 @@ public class TransactionResponse {
     private TransactionType transactionType; // e.g., DEPOSIT, PAYMENT, REFUND
     private LocalDateTime transactionDate;
     private String description;
+    private Long bookingId;
+    private String carName;
 }

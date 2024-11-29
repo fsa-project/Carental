@@ -21,6 +21,7 @@ public class CarDetailResponse {
     private double basePrice;
     private double deposit;
     private String address;
+    private String carStatus;
     private String description;
     private String additionalFunctions;
     private String termsOfUse;

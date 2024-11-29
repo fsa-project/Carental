@@ -48,6 +48,8 @@ public class UserService {
         transactionResponse.setDescription(transaction.getDescription());
         transactionResponse.setTransactionDate(transaction.getTransactionDate());
         transactionResponse.setTransactionType(transaction.getTransactionType());
+        transactionResponse.setBookingId(transaction.getBooking().getId());
+        transactionResponse.setCarName(transaction.getBooking().getCar().getName());
         return transactionResponse;
     }
     private DataPaginationResponse createPaginatedResponse(Pageable pageable, List<Transaction> transactions) {
@@ -89,11 +91,15 @@ public class UserService {
 
     public UserResponse handleUpdateUser(UpdateProfileDTO request, Long id) {
         User currentUser = userRepository.findById(id).orElse(null);
-        userMapper.updateUser(currentUser, request);
-        UserResponse response = userMapper.toUserResponse(currentUser);
-        if (currentUser != null) {
-            userRepository.save(currentUser);
+        if (currentUser == null) {
+            throw new RuntimeException("User not found");
         }
+        double wallet = currentUser.getWallet();
+        userMapper.updateUser(currentUser, request);
+        currentUser.setWallet(wallet);
+
+        UserResponse response = userMapper.toUserResponse(currentUser);
+        userRepository.save(currentUser);
 
         return response;
     }
