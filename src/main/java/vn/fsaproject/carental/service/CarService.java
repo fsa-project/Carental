@@ -211,6 +211,8 @@ public class CarService {
     }
     private CarDetailResponse createCarDetailResponse(Car car) {
         CarDetailResponse response = carMapper.toCarDetailResponse(car);
+        response.setCarStatus(car.getCarStatus());
+        response.setId(car.getId());
         response.setImages(car.getImages().stream()
                 .map(img -> "/api/images/" + Paths.get(img.getFilePath()).getFileName())
                 .toList());

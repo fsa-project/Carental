@@ -7,6 +7,7 @@ import java.util.List;
 @Getter
 @Setter
 public class CarDetailResponse {
+    private Long id;
     private String name;
     private String licensePlate;
     private String brand;
