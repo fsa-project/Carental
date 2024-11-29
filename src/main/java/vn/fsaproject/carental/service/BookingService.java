@@ -174,7 +174,7 @@ public class BookingService {
         }
 
         if (paymentMethod.equalsIgnoreCase("WALLET")) {
-            deductWalletBalance(user, depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
+            deductWalletBalance(user,booking, depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
             booking.setPaymentMethod(paymentMethod);
         }
         if (paymentMethod.equalsIgnoreCase("VNPAY")) {
@@ -194,32 +194,33 @@ public class BookingService {
         }
 
         if (paymentMethod.equalsIgnoreCase("WALLET")) {
-            deductWalletBalance(user, remainingFee, TransactionType.PAYMENT, "Rental payment processed");
-            refundWalletBalance(user, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
+            deductWalletBalance(user,booking, remainingFee, TransactionType.PAYMENT, "Rental payment processed");
+            refundWalletBalance(user,booking, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
             booking.setPaymentMethod(paymentMethod);
         }
 
     }
 
-    private void deductWalletBalance(User user, double amount, TransactionType type, String description) {
+    private void deductWalletBalance(User user,Booking booking, double amount, TransactionType type, String description) {
         user.setWallet(user.getWallet() - amount);
         userRepository.save(user);
-        recordTransaction(user, amount, type, description);
+        recordTransaction(user,booking, amount, type, description);
     }
 
-    private void refundWalletBalance(User user, double amount, TransactionType type, String description) {
+    private void refundWalletBalance(User user,Booking booking, double amount, TransactionType type, String description) {
         user.setWallet(user.getWallet() + amount);
         userRepository.save(user);
-        recordTransaction(user, amount, type, description);
+        recordTransaction(user,booking, amount, type, description);
     }
 
-    private void recordTransaction(User user, double amount, TransactionType type, String description) {
+    private void recordTransaction(User user,Booking booking, double amount, TransactionType type, String description) {
         Transaction transaction = new Transaction();
         transaction.setUser(user);
         transaction.setTransactionDate(LocalDateTime.now());
         transaction.setTransactionType(type);
         transaction.setAmount(amount);
         transaction.setDescription(description);
+        transaction.setBooking(booking);
         transactionRepository.save(transaction);
     }
 
