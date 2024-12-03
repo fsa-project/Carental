@@ -73,27 +73,44 @@ public class BookingService {
         Booking booking = findBookingById(bookingId);
         validateBookingStatus(booking, BookingStatus.PENDING_DEPOSIT);
 
+        updateBookingStatus(booking,BookingStatus.AWAITING_PICKUP_CONFIRMATION);
         String url = processDepositPayment(booking, paymentMethod, request);
         updateCarStatus(booking.getCar(), CarStatus.BOOKED);
-        BookingResponse response = buildBookingResponse(booking, BookingStatus.CONFIRMED);
+        BookingResponse response = buildBookingResponse(booking, BookingStatus.AWAITING_PICKUP_CONFIRMATION);
         response.setVnPayUrl(url);
         return response;
     }
-
-    public BookingResponse startBooking(Long bookingId) {
+    public BookingResponse ownerConfirmPickup(Long bookingId, Long ownerId) {
         Booking booking = findBookingById(bookingId);
-        validateBookingStatus(booking, BookingStatus.CONFIRMED);
+
+        // Ensure the owner is the car owner
+        if (!booking.getCar().getUser().getId().equals(ownerId)) {
+            throw new RuntimeException("Only the car owner can confirm pickup.");
+        }
+
+        validateBookingStatus(booking, BookingStatus.AWAITING_PICKUP_CONFIRMATION);
 
         updateBookingStatus(booking, BookingStatus.IN_PROGRESS);
 
         return buildBookingResponse(booking, BookingStatus.IN_PROGRESS);
     }
 
-    public BookingResponse completeBooking(Long bookingId, String paymentMethod) {
+
+    public BookingResponse startBooking(Long bookingId) {
         Booking booking = findBookingById(bookingId);
         validateBookingStatus(booking, BookingStatus.IN_PROGRESS);
 
-        processRentalPayment(booking, paymentMethod);
+        updateBookingStatus(booking, BookingStatus.IN_PROGRESS);
+
+        return buildBookingResponse(booking, BookingStatus.IN_PROGRESS);
+    }
+
+    public BookingResponse completeBooking(Long bookingId, String paymentMethod, HttpServletRequest request) {
+        Booking booking = findBookingById(bookingId);
+        validateBookingStatus(booking, BookingStatus.IN_PROGRESS);
+
+        processRentalPayment(booking, paymentMethod, request);
+        updateBookingStatus(booking, BookingStatus.COMPLETED);
         updateCarStatus(booking.getCar(), CarStatus.STOPPED);
 
         return buildBookingResponse(booking, BookingStatus.COMPLETED);
@@ -179,21 +196,28 @@ public class BookingService {
         return url;
     }
 
-    private void processRentalPayment(Booking booking, String paymentMethod) {
+    private String processRentalPayment(Booking booking, String paymentMethod, HttpServletRequest request) {
+        String url = "";
         User user = booking.getUser();
         Car car = booking.getCar();
         double rentalFee = calculateRentalFee(booking);
-        double remainingFee = rentalFee - car.getDeposit();
-
-        if (user.getWallet() < remainingFee) {
+        double remainingFeeAmount = rentalFee - car.getDeposit();
+        int remainingFee = (int) remainingFeeAmount;
+        if (user.getWallet() < remainingFeeAmount) {
             throw new RuntimeException("Insufficient wallet balance for rental payment");
         }
 
         if (paymentMethod.equalsIgnoreCase("WALLET")) {
-            deductWalletBalance(user,booking, remainingFee, TransactionType.PAYMENT, "Rental payment processed");
+            deductWalletBalance(user,booking, remainingFeeAmount, TransactionType.PAYMENT, "Rental payment processed");
             refundWalletBalance(user,booking, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
             booking.setPaymentMethod(paymentMethod);
         }
+        if (paymentMethod.equalsIgnoreCase("VNPAY")) {
+            url =  vnpayService.createOrder(request,remainingFee,"Thanh toan don hang:"+VNPAYConfig.getRandomNumber(8),VNPAYConfig.vnp_Returnurl);
+            booking.setPaymentMethod(paymentMethod);
+            deductWalletBalance(user,booking,remainingFeeAmount, TransactionType.PAYMENT, "Deposit payment processed");
+        }
+        return url;
 
     }
 

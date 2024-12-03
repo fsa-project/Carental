@@ -26,6 +26,7 @@ import vn.fsaproject.carental.repository.BookingRepository;
 import vn.fsaproject.carental.repository.CarImageRepository;
 import vn.fsaproject.carental.repository.CarRepository;
 import vn.fsaproject.carental.repository.UserRepository;
+import vn.fsaproject.carental.utils.SecurityUtil;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -47,6 +48,7 @@ public class CarService {
     private final BookingRepository bookingRepository;
     private final UserService userService;
     private final UserRepository userRepository;
+    private final SecurityUtil securityUtil;
 
     public CarService(
             @Value("${file.upload-dir}") String uploadDir,
@@ -55,7 +57,7 @@ public class CarService {
             CarImageRepository carImageRepository,
             UserService userService,
             BookingRepository bookingRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository, SecurityUtil securityUtil) {
         this.uploadDir = uploadDir;
         this.carRepository = carRepository;
         this.carMapper = carMapper;
@@ -63,6 +65,7 @@ public class CarService {
         this.userService = userService;
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
+        this.securityUtil = securityUtil;
     }
 
     /**
@@ -223,6 +226,8 @@ public class CarService {
     }
 
     private DataPaginationResponse createPaginatedResponse(Pageable pageable, List<Car> cars) {
+        Long userId = securityUtil.getCurrentUserId();
+        List<Car> allCars = carRepository.findByUserId(userId);
         List<CarResponse> responses = cars.stream()
                 .map(this::createCarResponse)
                 .toList();
@@ -230,8 +235,8 @@ public class CarService {
         Meta meta = new Meta();
         meta.setPage(pageable.getPageNumber() + 1);
         meta.setSize(pageable.getPageSize());
-        meta.setPages((int) Math.ceil((double) cars.size() / pageable.getPageSize()));
-        meta.setTotal(cars.size());
+        meta.setPages((int) Math.ceil((double) allCars.size() / pageable.getPageSize()));
+        meta.setTotal(allCars.size());
 
         DataPaginationResponse response = new DataPaginationResponse();
         response.setMeta(meta);
