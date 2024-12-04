@@ -17,4 +17,6 @@ import java.util.List;
 public interface CarRepository extends JpaRepository<Car, Long>, JpaSpecificationExecutor<Car> {
     Page<Car> findByUserId(Long userId, Pageable pageable);
 
+    List<Car> findByUserId(Long userId);
+
 }

@@ -45,7 +45,7 @@ public class BookingService {
                           UserRepository userRepository,
                           TransactionRepository transactionRepository,
                           VNPAYService vnpayService
-                          ) {
+    ) {
         this.bookingRepository = bookingRepository;
         this.carRepository = carRepository;
         this.bookingMapper = bookingMapper;
@@ -174,11 +174,11 @@ public class BookingService {
         }
 
         if (paymentMethod.equalsIgnoreCase("WALLET")) {
-            deductWalletBalance(user,booking, depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
+            deductWalletBalance(user, booking, depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
             booking.setPaymentMethod(paymentMethod);
         }
         if (paymentMethod.equalsIgnoreCase("VNPAY")) {
-            url =  vnpayService.createOrder(request,deposit,"Thanh toan don hang:"+VNPAYConfig.getRandomNumber(8),VNPAYConfig.vnp_Returnurl);
+            url = vnpayService.createOrder(request, deposit, "" + booking.getId(), VNPAYConfig.vnp_Returnurl);
         }
         return url;
     }
@@ -194,26 +194,26 @@ public class BookingService {
         }
 
         if (paymentMethod.equalsIgnoreCase("WALLET")) {
-            deductWalletBalance(user,booking, remainingFee, TransactionType.PAYMENT, "Rental payment processed");
-            refundWalletBalance(user,booking, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
+            deductWalletBalance(user, booking, remainingFee, TransactionType.PAYMENT, "Rental payment processed");
+            refundWalletBalance(user, booking, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
             booking.setPaymentMethod(paymentMethod);
         }
 
     }
 
-    private void deductWalletBalance(User user,Booking booking, double amount, TransactionType type, String description) {
+    private void deductWalletBalance(User user, Booking booking, double amount, TransactionType type, String description) {
         user.setWallet(user.getWallet() - amount);
         userRepository.save(user);
-        recordTransaction(user,booking, amount, type, description);
+        recordTransaction(user, booking, -amount, type, description);
     }
 
-    private void refundWalletBalance(User user,Booking booking, double amount, TransactionType type, String description) {
+    private void refundWalletBalance(User user, Booking booking, double amount, TransactionType type, String description) {
         user.setWallet(user.getWallet() + amount);
         userRepository.save(user);
-        recordTransaction(user,booking, amount, type, description);
+        recordTransaction(user, booking, amount, type, description);
     }
 
-    private void recordTransaction(User user,Booking booking, double amount, TransactionType type, String description) {
+    private void recordTransaction(User user, Booking booking, double amount, TransactionType type, String description) {
         Transaction transaction = new Transaction();
         transaction.setUser(user);
         transaction.setTransactionDate(LocalDateTime.now());

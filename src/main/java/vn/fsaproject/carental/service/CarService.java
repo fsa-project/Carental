@@ -26,6 +26,7 @@ import vn.fsaproject.carental.repository.BookingRepository;
 import vn.fsaproject.carental.repository.CarImageRepository;
 import vn.fsaproject.carental.repository.CarRepository;
 import vn.fsaproject.carental.repository.UserRepository;
+import vn.fsaproject.carental.utils.SecurityUtil;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -47,6 +48,7 @@ public class CarService {
     private final BookingRepository bookingRepository;
     private final UserService userService;
     private final UserRepository userRepository;
+    private final SecurityUtil securityUtil;
 
     public CarService(
             @Value("${file.upload-dir}") String uploadDir,
@@ -55,7 +57,8 @@ public class CarService {
             CarImageRepository carImageRepository,
             UserService userService,
             BookingRepository bookingRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            SecurityUtil securityUtil) {
         this.uploadDir = uploadDir;
         this.carRepository = carRepository;
         this.carMapper = carMapper;
@@ -63,6 +66,7 @@ public class CarService {
         this.userService = userService;
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
+        this.securityUtil = securityUtil;
     }
 
     /**
@@ -82,6 +86,12 @@ public class CarService {
             Pageable pageable) {
         Date startDate = Date.from(startTime.atZone(ZoneId.systemDefault()).toInstant());
         Date endDate = Date.from(endTime.atZone(ZoneId.systemDefault()).toInstant());
+        List<Car> allCars = carRepository.findAll().stream()
+                .filter(car -> bookingRepository.findByCarId(car.getId())
+                        .stream()
+                        .noneMatch(booking -> booking.getStartDateTime().before(endDate) &&
+                                booking.getEndDateTime().after(startDate)))
+                .toList();
         List<Car> availableCars = carRepository.findAll(spec, pageable).stream()
                 .filter(car -> bookingRepository.findByCarId(car.getId())
                         .stream()
@@ -90,7 +100,7 @@ public class CarService {
                 .toList();
 
         // Handle pagination and mapping
-        return createPaginatedResponse(pageable, availableCars);
+        return createPaginatedResponse(pageable, availableCars, allCars);
     }
 
     public CarResponse updateToAvailable(Long carId) {
@@ -125,8 +135,9 @@ public class CarService {
     }
 
     public DataPaginationResponse handleGetCars(Long userId, Pageable pageable) {
+        List<Car> allCars = carRepository.findByUserId(userId);
         Page<Car> cars = carRepository.findByUserId(userId, pageable);
-        return createPaginatedResponse(pageable, cars.getContent());
+        return createPaginatedResponse(pageable, cars.getContent(), allCars);
     }
 
     public CarResponse handleUpdateCar(UpdateCarDTO carDTO, MultipartFile[] images, Long carId, Long userId)
@@ -222,16 +233,20 @@ public class CarService {
         return response;
     }
 
-    private DataPaginationResponse createPaginatedResponse(Pageable pageable, List<Car> cars) {
-        List<CarResponse> responses = cars.stream()
-                .map(this::createCarResponse)
-                .toList();
+    private DataPaginationResponse createPaginatedResponse(Pageable pageable, List<Car> cars, List<Car> allCars) {
+        //Long userId = securityUtil.getCurrentUserId();
+        //List<Car> allCars = carRepository.findByUserId(userId);
+
 
         Meta meta = new Meta();
         meta.setPage(pageable.getPageNumber() + 1);
         meta.setSize(pageable.getPageSize());
-        meta.setPages((int) Math.ceil((double) cars.size() / pageable.getPageSize()));
-        meta.setTotal(cars.size());
+        meta.setPages((int) Math.ceil((double) allCars.size() / pageable.getPageSize()));
+        meta.setTotal(allCars.size());
+
+        List<CarResponse> responses = cars.stream()
+                .map(this::createCarResponse)
+                .toList();
 
         DataPaginationResponse response = new DataPaginationResponse();
         response.setMeta(meta);
