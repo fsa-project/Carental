@@ -233,6 +233,7 @@ public class CarService {
         return response;
     }
 
+
     private DataPaginationResponse createPaginatedResponse(Pageable pageable, List<Car> cars, List<Car> allCars) {
         //Long userId = securityUtil.getCurrentUserId();
         //List<Car> allCars = carRepository.findByUserId(userId);
@@ -248,6 +249,7 @@ public class CarService {
                 .map(this::createCarResponse)
                 .toList();
 
+    
         DataPaginationResponse response = new DataPaginationResponse();
         response.setMeta(meta);
         response.setResult(responses);

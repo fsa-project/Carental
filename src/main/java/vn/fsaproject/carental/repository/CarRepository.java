@@ -18,5 +18,4 @@ public interface CarRepository extends JpaRepository<Car, Long>, JpaSpecificatio
     Page<Car> findByUserId(Long userId, Pageable pageable);
 
     List<Car> findByUserId(Long userId);
-
 }

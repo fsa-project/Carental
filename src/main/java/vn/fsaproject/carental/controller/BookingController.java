@@ -30,24 +30,23 @@ public class BookingController {
     @PostMapping("/new-booking")
     public ResponseEntity<BookingResponse> createBooking(
             @RequestParam("carId") Long carId,
-            @RequestBody StartBookingDTO startBookingDTO
-            ){
-        try{
+            @RequestBody StartBookingDTO startBookingDTO) {
+        try {
             Long userId = securityUtil.getCurrentUserId();
             BookingResponse response = bookingService.createBooking(userId, carId, startBookingDTO);
             return ResponseEntity.ok(response);
-        }catch(RuntimeException e){
+        } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(null);
         }
     }
+
     @PostMapping("/confirm/{bookingId}")
     public ResponseEntity<BookingResponse> confirmBooking(
             @PathVariable Long bookingId,
             @RequestParam String paymentMethod,
-            HttpServletRequest request
-    ) {
+            HttpServletRequest request) {
         try {
-            BookingResponse response = bookingService.confirmBooking(bookingId, paymentMethod,request);
+            BookingResponse response = bookingService.confirmBooking(bookingId, paymentMethod, request);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(null);
@@ -55,7 +54,8 @@ public class BookingController {
     }
 
     @PostMapping("/confirm2/{bookingId}")
-    public ResponseEntity<BookingResponse> updatePaymentStatus(@PathVariable Long bookingId, @RequestParam String status) {
+    public ResponseEntity<BookingResponse> updatePaymentStatus(@PathVariable Long bookingId,
+            @RequestParam String status) {
 
         try {
             BookingResponse response = bookingService.updateBookingStatus(bookingId);
@@ -63,6 +63,14 @@ public class BookingController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(null);
         }
+    }
+
+    @PatchMapping("/{bookingId}/confirm-pickup")
+    public ResponseEntity<BookingResponse> ownerConfirmPickup(
+            @PathVariable Long bookingId) {
+        Long userId = securityUtil.getCurrentUserId();
+        BookingResponse response = bookingService.ownerConfirmPickup(bookingId, userId);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/start/{bookingId}")
@@ -74,25 +82,27 @@ public class BookingController {
             return ResponseEntity.badRequest().body(null);
         }
     }
+
     @PostMapping("/complete/{bookingId}")
     public ResponseEntity<?> completeBooking(@PathVariable Long bookingId,
-                                             @RequestParam String paymentMethod
-    ) {
-        try{
-            BookingResponse response = bookingService.completeBooking(bookingId,paymentMethod);
+            @RequestParam String paymentMethod,
+            HttpServletRequest request) {
+        try {
+            BookingResponse response = bookingService.completeBooking(bookingId, paymentMethod, request);
             return ResponseEntity.ok(response);
-        }catch (RuntimeException e) {
+        } catch (RuntimeException e) {
             log.error("Error completing booking: {}", e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
     @PostMapping("/cancel/{bookingId}")
     @ApiMessage("User has stop booking")
     public ResponseEntity<?> cancelBooking(@PathVariable Long bookingId) {
         try {
             BookingResponse response = bookingService.cancelBooking(bookingId);
             return ResponseEntity.ok(response);
-        }catch (RuntimeException e) {
+        } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -100,7 +110,7 @@ public class BookingController {
     @GetMapping("/all-booking")
     public ResponseEntity<DataPaginationResponse> getAllBookings(Pageable pageable) {
         Long userId = securityUtil.getCurrentUserId();
-        DataPaginationResponse response = bookingService.getUserBookings(userId,pageable);
+        DataPaginationResponse response = bookingService.getUserBookings(userId, pageable);
         return ResponseEntity.ok(response);
     }
 }
