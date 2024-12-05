@@ -75,7 +75,7 @@ public class BookingService {
 
         updateBookingStatus(booking,BookingStatus.AWAITING_PICKUP_CONFIRMATION);
         String url = processDepositPayment(booking, paymentMethod, request);
-        // updateCarStatus(booking.getCar(), CarStatus.BOOKED);
+        //updateCarStatus(booking.getCar(), CarStatus.BOOKED);
         BookingResponse response = buildBookingResponse(booking, BookingStatus.PENDING_DEPOSIT);
         response.setVnPayUrl(url);
         return response;
@@ -90,16 +90,9 @@ public class BookingService {
         return buildBookingResponse(booking, BookingStatus.CONFIRMED);
     }
 
-    public BookingResponse startBooking(Long bookingId) {
-        updateCarStatus(booking.getCar(), CarStatus.BOOKED);
-        BookingResponse response = buildBookingResponse(booking, BookingStatus.AWAITING_PICKUP_CONFIRMATION);
-        response.setVnPayUrl(url);
-        return response;
-    }
-
     public BookingResponse ownerConfirmPickup(Long bookingId, Long ownerId) {
+        Booking booking = findBookingById(bookingId);
 
-        
         // Ensure the owner is the car owner
         if (!booking.getCar().getUser().getId().equals(ownerId)) {
             throw new RuntimeException("Only the car owner can confirm pickup.");
@@ -200,30 +193,27 @@ public class BookingService {
         if (user.getWallet() < depositAmount) {
             throw new RuntimeException("Insufficient wallet balance for deposit");
         }
-
+        
         if (paymentMethod.equalsIgnoreCase("WALLET")) {
             deductWalletBalance(user, booking, depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
             booking.setPaymentMethod(paymentMethod);
-     
+        }
+        if (paymentMethod.equalsIgnoreCase("VNPAY")) {
+            url = vnpayService.createOrder(request, deposit, "" + booking.getId(), VNPAYConfig.vnp_Returnurl);
+        }
+        return url;
+    }
 
-    url=vnpayService.createOrder(request,deposit,""+booking.getId(),VNPAYConfig.vnp_Returnurl);}
-
-    
-        rn url;
-    
-
-    at String processRentalPayment(Booking booki
-    g
-        ng url = "";
-         user = booking.getUser();
-        car = booking.getCar();
-        le rentalFee = calculateRentalFee(booking);
-        le remainingFeeAmount = rentalFee - car.
-    iif(user.getWallet() < remainingFeeAmount) {
-    
+    private String processRentalPayment(Booking booking, String paymentMethod, HttpServletRequest request) {
+        String url = "";
+        User user = booking.getUser();
+        Car car = booking.getCar();
+        double rentalFee = calculateRentalFee(booking);
+        double remainingFeeAmount = rentalFee - car.getDeposit();
+        int remainingFee = (int) remainingFeeAmount;
+        if (user.getWallet() < remainingFeeAmount) {
             throw new RuntimeException("Insufficient wallet balance for rental payment");
         }
-
         if (paymentMethod.equalsIgnoreCase("WALLET")) {
             deductWalletBalance(user,booking, remainingFeeAmount, TransactionType.PAYMENT, "Rental payment processed");
             refundWalletBalance(user,booking, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
@@ -235,19 +225,16 @@ public class BookingService {
             deductWalletBalance(user,booking,remainingFeeAmount, TransactionType.PAYMENT, "Deposit payment processed");
         }
         return url;
-
     }
 
-
-    private void deductWalletBalance(User customer, Booking booking, double amount, TransactionType type,
-            String description) {
+    private void deductWalletBalance(User customer,Booking booking, double amount, TransactionType type, String description) {
         customer.setWallet(customer.getWallet() - amount);
         User owner = booking.getCar().getUser();
         owner.setWallet(owner.getWallet() + amount);
         userRepository.save(owner);
         userRepository.save(customer);
-        recordTransaction(customer, booking, -amount, type, description);
-        recordTransaction(owner, booking, amount, type, description);
+        recordTransaction(customer,booking, -amount, type, description);
+        recordTransaction(owner,booking, amount, type, description);
     }
 
     private void refundWalletBalance(User customer,Booking booking, double amount, TransactionType type, String description) {
@@ -258,8 +245,8 @@ public class BookingService {
         userRepository.save(customer);
         recordTransaction(owner,booking, -amount, type, description);
         recordTransaction(customer,booking, amount, type, description);
+    }
 
-    
     private void recordTransaction(User user, Booking booking, double amount, TransactionType type, String description) {
         Transaction transaction = new Transaction();
         transaction.setUser(user);
