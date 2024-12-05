@@ -1,6 +1,7 @@
 package vn.fsaproject.carental.service;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import vn.fsaproject.carental.dto.request.RegisterDTO;
 import vn.fsaproject.carental.dto.request.UpdateCarDTO;
@@ -23,12 +24,21 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final RoleMapper roleMapper;
 
-    public UserService(UserRepository userRepository, UserMapper userMapper, RoleService roleService, RoleRepository roleRepository, RoleMapper roleMapper) {
+    private final PasswordEncoder passwordEncoder;
+
+    public UserService(UserRepository userRepository,
+                       UserMapper userMapper,
+                       RoleService roleService,
+                       RoleRepository roleRepository,
+                       RoleMapper roleMapper,
+                       PasswordEncoder passwordEncoder
+    ) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.roleService = roleService;
         this.roleRepository = roleRepository;
         this.roleMapper = roleMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public User handleCreateUser(User user) {
@@ -87,4 +97,17 @@ public class UserService {
     public User getUserByRefreshTokenAndEmail(String refreshToken, String email) {
         return this.userRepository.findByRefreshTokenAndEmail(refreshToken, email);
     }
+
+    public boolean isEmailRegistered(String email) {
+        return userRepository.existsByEmail(email);
+    }
+
+    public void updatePassword(String email, String newPassword) {
+        User user = userRepository.findByEmail(email);
+        if (user != null) {
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userRepository.save(user);
+        }
+    }
+
 }
