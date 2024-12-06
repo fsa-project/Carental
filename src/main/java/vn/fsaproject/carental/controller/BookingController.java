@@ -27,7 +27,7 @@ public class BookingController {
     }
 
     @PostMapping("/new-booking")
-    public ResponseEntity<BookingResponse> createBooking(
+    public ResponseEntity<?> createBooking(
             @RequestParam("carId") Long carId,
             @RequestBody StartBookingDTO startBookingDTO
             ){
@@ -36,7 +36,7 @@ public class BookingController {
             BookingResponse response = bookingService.createBooking(userId, carId, startBookingDTO);
             return ResponseEntity.ok(response);
         }catch(RuntimeException e){
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
     @PostMapping("/confirm/{bookingId}")
@@ -60,15 +60,7 @@ public class BookingController {
         BookingResponse response = bookingService.ownerConfirmPickup(bookingId, userId);
         return ResponseEntity.ok(response);
     }
-    @PostMapping("/start/{bookingId}")
-    public ResponseEntity<BookingResponse> startBooking(@PathVariable Long bookingId) {
-        try {
-            BookingResponse response = bookingService.startBooking(bookingId);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(null);
-        }
-    }
+
     @PostMapping("/complete/{bookingId}")
     public ResponseEntity<?> completeBooking(@PathVariable Long bookingId,
                                              @RequestParam String paymentMethod,
