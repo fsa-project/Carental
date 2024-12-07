@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.List;
 
 @Slf4j
@@ -58,7 +59,10 @@ public class BookingService {
         if (user.getCars().contains(car)){
             throw new RuntimeException("Can not rent your own car ^.^");
         }
-        validateCarAvailability(car);
+        // Change to validate by renting period
+        Date startDateTime = startBookingDTO.getStartDateTime();
+        Date endDateTime = startBookingDTO.getEndDateTime();
+        validateCarAvailability(car, startDateTime, endDateTime);
 
         Booking booking = initializeBooking(startBookingDTO, car, user, renter, driver);
         bookingRepository.save(booking);
@@ -101,25 +105,19 @@ public class BookingService {
         return buildBookingResponse(booking, BookingStatus.IN_PROGRESS);
     }
 
-
-    public BookingResponse startBooking(Long bookingId) {
-        Booking booking = findBookingById(bookingId);
-        validateBookingStatus(booking, BookingStatus.IN_PROGRESS);
-
-        updateBookingStatus(booking, BookingStatus.IN_PROGRESS);
-
-        return buildBookingResponse(booking, BookingStatus.IN_PROGRESS);
-    }
-
+    /**
+     * Change the car status after completing the booking to 'available' instead of 'stopped' as before.
+     * The car can still be manually set to 'stopped' using the {@link CarService#updateToStopped} method.
+     */
     public BookingResponse completeBooking(Long bookingId, String paymentMethod, HttpServletRequest request) {
         Booking booking = findBookingById(bookingId);
         validateBookingStatus(booking, BookingStatus.IN_PROGRESS);
-
-        processRentalPayment(booking, paymentMethod, request);
         updateBookingStatus(booking, BookingStatus.COMPLETED);
-        updateCarStatus(booking.getCar(), CarStatus.STOPPED);
-
-        return buildBookingResponse(booking, BookingStatus.COMPLETED);
+        updateCarStatus(booking.getCar(), CarStatus.AVAILABLE);
+        String url = processRentalPayment(booking, paymentMethod, request);
+        BookingResponse response = buildBookingResponse(booking, BookingStatus.AWAITING_PICKUP_CONFIRMATION);
+        response.setVnPayUrl(url);
+        return response;
     }
 
     public BookingResponse cancelBooking(Long bookingId) {
@@ -138,6 +136,25 @@ public class BookingService {
     }
 
     // Helper methods
+    private void validateCarAvailability(Car car, Date startDateTime, Date endDateTime) {
+        // Check if the car's owner stop let this car for rent
+        if (car.getCarStatus().equalsIgnoreCase("Stopped")){
+            throw new RuntimeException("Car is currently stopped for renting");
+        }
+        List<Booking> carBookings = bookingRepository.findByCarId(car.getId());
+        for (Booking booking : carBookings) {
+            // Check if the car is in middle of an 'in-progress' booking
+            if (booking.getBookingStatus().equals(BookingStatus.IN_PROGRESS.getMessage()) &&
+                    isOverlapping(booking.getStartDateTime(), booking.getEndDateTime(), startDateTime, endDateTime)) {
+                throw new RuntimeException("Car is already booked for the selected period.");
+            }
+        }
+    }
+
+    private boolean isOverlapping(Date existingStart, Date existingEnd, Date newStart, Date newEnd) {
+        return newStart.before(existingEnd) && newEnd.after(existingStart);
+    }
+
     private Car findCarById(Long carId) {
         return carRepository.findById(carId)
                 .orElseThrow(() -> new RuntimeException("Car not found"));
@@ -151,12 +168,6 @@ public class BookingService {
     private Booking findBookingById(Long bookingId) {
         return bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
-    }
-
-    private void validateCarAvailability(Car car) {
-        if (!car.getCarStatus().equals(CarStatus.AVAILABLE.getMessage())) {
-            throw new RuntimeException("Car is not available");
-        }
     }
 
     private void validateBookingStatus(Booking booking, BookingStatus expectedStatus) {
@@ -193,7 +204,7 @@ public class BookingService {
         if (user.getWallet() < depositAmount) {
             throw new RuntimeException("Insufficient wallet balance for deposit");
         }
-        
+
         if (paymentMethod.equalsIgnoreCase("WALLET")) {
             deductWalletBalance(user, booking, depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
             booking.setPaymentMethod(paymentMethod);
@@ -271,6 +282,7 @@ public class BookingService {
     private BookingResponse buildBookingResponse(Booking booking, BookingStatus status) {
         BookingResponse response = bookingMapper.toBookingResponse(booking);
         response.setBookingStatus(status.getMessage());
+        response.setCarId(booking.getCar().getId());
         response.setId(booking.getId());
         return response;
     }

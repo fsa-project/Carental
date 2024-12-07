@@ -86,28 +86,37 @@ public class CarService {
             Pageable pageable) {
         Date startDate = Date.from(startTime.atZone(ZoneId.systemDefault()).toInstant());
         Date endDate = Date.from(endTime.atZone(ZoneId.systemDefault()).toInstant());
-        List<Car> allCars = carRepository.findAll().stream()
-                .filter(car -> bookingRepository.findByCarId(car.getId())
-                        .stream()
-                        .noneMatch(booking -> booking.getStartDateTime().before(endDate) &&
-                                booking.getEndDateTime().after(startDate)))
-                .toList();
-               List<Car> availableCars = carRepository.findAll(spec, pageable).stream()
+
+        // Retrieve all cars matching the specification (including address filter)
+        List<Car> allMatchingCars = carRepository.findAll(spec);
+
+        // Filter cars by booking availability
+        List<Car> availableCars = allMatchingCars.stream()
                 .filter(car -> bookingRepository.findByCarId(car.getId())
                         .stream()
                         .noneMatch(booking -> booking.getStartDateTime().before(endDate) &&
                                 booking.getEndDateTime().after(startDate)))
                 .toList();
 
-        // Handle pagination and mapping
-        return createPaginatedResponse(pageable, availableCars, allCars);
+        // Paginate the filtered available cars
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), availableCars.size());
+        List<Car> paginatedCars = availableCars.subList(start, end);
+
+        // Use the filtered list's size as the total
+        return createPaginatedResponse(pageable, paginatedCars, availableCars.size());
     }
 
-    public CarResponse updateToAvailable(Long carId) {
+    public CarResponse updateToStopped(Long carId) {
+        Long userId = securityUtil.getCurrentUserId();
+        User user = userRepository.findById(userId).orElse(null);
         Car car = carRepository.findById(carId)
                 .orElseThrow(() -> new RuntimeException("Car not found"));
-        if (CarStatus.STOPPED.getMessage().equalsIgnoreCase(car.getCarStatus())) {
-            car.setCarStatus(CarStatus.AVAILABLE.getMessage());
+        if (user != car.getUser()){
+            throw new RuntimeException("User not allowed to update car");
+        }
+        if (CarStatus.AVAILABLE.getMessage().equalsIgnoreCase(car.getCarStatus())) {
+            car.setCarStatus(CarStatus.STOPPED.getMessage());
         }
         carRepository.save(car);
 
@@ -135,9 +144,9 @@ public class CarService {
     }
 
     public DataPaginationResponse handleGetCars(Long userId, Pageable pageable) {
-        List<Car> allCars = carRepository.findByUserId(userId);
+        List<Car> list_cars = carRepository.findByUserId(userId);
         Page<Car> cars = carRepository.findByUserId(userId, pageable);
-        return createPaginatedResponse(pageable, cars.getContent(), allCars);
+        return createPaginatedResponse(pageable, cars.getContent(),list_cars.size());
     }
 
     public CarResponse handleUpdateCar(UpdateCarDTO carDTO, MultipartFile[] images, Long carId, Long userId)
@@ -233,23 +242,17 @@ public class CarService {
         return response;
     }
 
-
-    private DataPaginationResponse createPaginatedResponse(Pageable pageable, List<Car> cars, List<Car> allCars) {
-        //Long userId = securityUtil.getCurrentUserId();
-        //List<Car> allCars = carRepository.findByUserId(userId);
-
-
-        Meta meta = new Meta();
-        meta.setPage(pageable.getPageNumber() + 1);
-        meta.setSize(pageable.getPageSize());
-        meta.setPages((int) Math.ceil((double) allCars.size() / pageable.getPageSize()));
-        meta.setTotal(allCars.size());
-
+    private DataPaginationResponse createPaginatedResponse(Pageable pageable, List<Car> cars, int totalFilteredCars) {
         List<CarResponse> responses = cars.stream()
                 .map(this::createCarResponse)
                 .toList();
 
-    
+        Meta meta = new Meta();
+        meta.setPage(pageable.getPageNumber() + 1); // Convert 0-based page index to 1-based
+        meta.setSize(pageable.getPageSize());
+        meta.setTotal(totalFilteredCars); // Use the total count of filtered cars
+        meta.setPages((int) Math.ceil((double) totalFilteredCars / pageable.getPageSize()));
+
         DataPaginationResponse response = new DataPaginationResponse();
         response.setMeta(meta);
         response.setResult(responses);

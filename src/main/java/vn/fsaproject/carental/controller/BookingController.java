@@ -16,8 +16,7 @@ import vn.fsaproject.carental.service.BookingService;
 import vn.fsaproject.carental.utils.SecurityUtil;
 import vn.fsaproject.carental.utils.annotation.ApiMessage;
 
-import java.util.Map;
-
+import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/bookings")
@@ -41,11 +40,10 @@ public class BookingController {
             Long userId = securityUtil.getCurrentUserId();
             BookingResponse response = bookingService.createBooking(userId, carId, startBookingDTO, renter, driver);
             return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
+        }catch(RuntimeException e){
             return ResponseEntity.badRequest().body(null);
         }
     }
-
     @PostMapping("/confirm/{bookingId}")
     public ResponseEntity<BookingResponse> confirmBooking(
             @PathVariable Long bookingId,
@@ -79,36 +77,26 @@ public class BookingController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/start/{bookingId}")
-    public ResponseEntity<BookingResponse> startBooking(@PathVariable Long bookingId) {
-        try {
-            BookingResponse response = bookingService.startBooking(bookingId);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(null);
-        }
-    }
-
     @PostMapping("/complete/{bookingId}")
     public ResponseEntity<?> completeBooking(@PathVariable Long bookingId,
-            @RequestParam String paymentMethod,
-            HttpServletRequest request) {
-        try {
-            BookingResponse response = bookingService.completeBooking(bookingId, paymentMethod, request);
+                                             @RequestParam String paymentMethod,
+                                             HttpServletRequest request
+    ) {
+        try{
+            BookingResponse response = bookingService.completeBooking(bookingId,paymentMethod,request);
             return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
+        }catch (RuntimeException e) {
             log.error("Error completing booking: {}", e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-
     @PostMapping("/cancel/{bookingId}")
     @ApiMessage("User has stop booking")
     public ResponseEntity<?> cancelBooking(@PathVariable Long bookingId) {
         try {
             BookingResponse response = bookingService.cancelBooking(bookingId);
             return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
+        }catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -116,7 +104,7 @@ public class BookingController {
     @GetMapping("/all-booking")
     public ResponseEntity<DataPaginationResponse> getAllBookings(Pageable pageable) {
         Long userId = securityUtil.getCurrentUserId();
-        DataPaginationResponse response = bookingService.getUserBookings(userId, pageable);
+        DataPaginationResponse response = bookingService.getUserBookings(userId,pageable);
         return ResponseEntity.ok(response);
     }
 }
