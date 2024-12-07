@@ -13,15 +13,9 @@ import vn.fsaproject.carental.dto.request.StartBookingDTO;
 import vn.fsaproject.carental.dto.response.BookingResponse;
 import vn.fsaproject.carental.dto.response.DataPaginationResponse;
 import vn.fsaproject.carental.dto.response.Meta;
-import vn.fsaproject.carental.entities.Booking;
-import vn.fsaproject.carental.entities.Car;
-import vn.fsaproject.carental.entities.Transaction;
-import vn.fsaproject.carental.entities.User;
+import vn.fsaproject.carental.entities.*;
 import vn.fsaproject.carental.mapper.BookingMapper;
-import vn.fsaproject.carental.repository.BookingRepository;
-import vn.fsaproject.carental.repository.CarRepository;
-import vn.fsaproject.carental.repository.TransactionRepository;
-import vn.fsaproject.carental.repository.UserRepository;
+import vn.fsaproject.carental.repository.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,13 +32,15 @@ public class BookingService {
     private final TransactionRepository transactionRepository;
     private final BookingMapper bookingMapper;
     private final VNPAYService vnpayService;
+    private final UserBookingRepository userBookingRepository;
 
     public BookingService(BookingRepository bookingRepository,
                           CarRepository carRepository,
                           BookingMapper bookingMapper,
                           UserRepository userRepository,
                           TransactionRepository transactionRepository,
-                          VNPAYService vnpayService
+                          VNPAYService vnpayService,
+                          UserBookingRepository userBookingRepository
     ) {
         this.bookingRepository = bookingRepository;
         this.carRepository = carRepository;
@@ -52,10 +48,11 @@ public class BookingService {
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.vnpayService = vnpayService;
+        this.userBookingRepository = userBookingRepository;
     }
 
     // Main booking flow methods
-    public BookingResponse createBooking(Long userId, Long carId, StartBookingDTO startBookingDTO) {
+    public BookingResponse createBooking(Long userId, Long carId, StartBookingDTO startBookingDTO, UserBooking renter, UserBooking driver) {
         Car car = findCarById(carId);
         User user = findUserById(userId);
         if (user.getCars().contains(car)){
@@ -63,9 +60,8 @@ public class BookingService {
         }
         validateCarAvailability(car);
 
-        Booking booking = initializeBooking(startBookingDTO, car, user);
+        Booking booking = initializeBooking(startBookingDTO, car, user, renter, driver);
         bookingRepository.save(booking);
-
         return buildBookingResponse(booking, BookingStatus.PENDING_DEPOSIT);
     }
 
@@ -176,10 +172,14 @@ public class BookingService {
         }
     }
 
-    private Booking initializeBooking(StartBookingDTO dto, Car car, User user) {
+    private Booking initializeBooking(StartBookingDTO dto, Car car, User user, UserBooking renter, UserBooking driver) {
         Booking booking = bookingMapper.toBooking(dto);
+        userBookingRepository.save(renter);
+        userBookingRepository.save(driver);
         booking.setCar(car);
         booking.setUser(user);
+        booking.setRenter(renter);
+        booking.setDriver(driver);
         booking.setBookingStatus(BookingStatus.PENDING_DEPOSIT.getMessage());
         return booking;
     }

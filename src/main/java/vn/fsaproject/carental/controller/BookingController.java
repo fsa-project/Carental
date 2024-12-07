@@ -4,11 +4,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import vn.fsaproject.carental.dto.request.CreateCarDTO;
 import vn.fsaproject.carental.dto.request.StartBookingDTO;
 import vn.fsaproject.carental.dto.response.BookingResponse;
 import vn.fsaproject.carental.dto.response.DataPaginationResponse;
+import vn.fsaproject.carental.entities.UserBooking;
 import vn.fsaproject.carental.service.BookingService;
 import vn.fsaproject.carental.utils.SecurityUtil;
 import vn.fsaproject.carental.utils.annotation.ApiMessage;
@@ -27,13 +30,16 @@ public class BookingController {
         this.securityUtil = securityUtil;
     }
 
-    @PostMapping("/new-booking")
+    @PostMapping(value = "/new-booking", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE,
+            MediaType.APPLICATION_OCTET_STREAM_VALUE })
     public ResponseEntity<BookingResponse> createBooking(
             @RequestParam("carId") Long carId,
-            @RequestBody StartBookingDTO startBookingDTO) {
+            @RequestPart("renter") UserBooking renter,
+            @RequestPart("driver") UserBooking driver,
+            @RequestPart("bookingInfo") StartBookingDTO startBookingDTO) {
         try {
             Long userId = securityUtil.getCurrentUserId();
-            BookingResponse response = bookingService.createBooking(userId, carId, startBookingDTO);
+            BookingResponse response = bookingService.createBooking(userId, carId, startBookingDTO, renter, driver);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(null);

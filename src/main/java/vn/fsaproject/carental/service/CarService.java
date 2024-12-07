@@ -92,7 +92,7 @@ public class CarService {
                         .noneMatch(booking -> booking.getStartDateTime().before(endDate) &&
                                 booking.getEndDateTime().after(startDate)))
                 .toList();
-        List<Car> availableCars = carRepository.findAll(spec, pageable).stream()
+               List<Car> availableCars = carRepository.findAll(spec, pageable).stream()
                 .filter(car -> bookingRepository.findByCarId(car.getId())
                         .stream()
                         .noneMatch(booking -> booking.getStartDateTime().before(endDate) &&
