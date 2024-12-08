@@ -152,11 +152,11 @@ public class AuthController {
 
         this.userService.updateUserToken(null, email);
 
-        // xóa refresh token ở cookie bằng cách set expire time bằng 0
-        ResponseCookie deleteCookie = ResponseCookie
-                .from("refresh_token", null)
+        //set cookie
+        ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", null)
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
+                .sameSite("None")
                 .path("/")
                 .maxAge(0)
                 .build();
