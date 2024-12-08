@@ -29,6 +29,7 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -70,7 +71,7 @@ public class BookingService {
         Booking booking = initializeBooking(startBookingDTO, car, user);
         bookingRepository.save(booking);
 
-        return buildBookingResponse(booking, BookingStatus.PENDING_DEPOSIT);
+        return buildBookingResponse(booking, BookingStatus.PENDING_DEPOSIT.getMessage());
     }
 
     public BookingResponse confirmBooking(Long bookingId, String paymentMethod, HttpServletRequest request) {
@@ -79,7 +80,7 @@ public class BookingService {
 
         updateBookingStatus(booking,BookingStatus.AWAITING_PICKUP_CONFIRMATION);
         String url = processDepositPayment(booking, paymentMethod, request);
-        BookingResponse response = buildBookingResponse(booking, BookingStatus.AWAITING_PICKUP_CONFIRMATION);
+        BookingResponse response = buildBookingResponse(booking, BookingStatus.AWAITING_PICKUP_CONFIRMATION.getMessage());
         response.setVnPayUrl(url);
         return response;
     }
@@ -95,7 +96,7 @@ public class BookingService {
 
         updateBookingStatus(booking, BookingStatus.IN_PROGRESS);
 
-        return buildBookingResponse(booking, BookingStatus.IN_PROGRESS);
+        return buildBookingResponse(booking, BookingStatus.IN_PROGRESS.getMessage());
     }
 
     /**
@@ -108,7 +109,7 @@ public class BookingService {
         updateBookingStatus(booking, BookingStatus.COMPLETED);
         updateCarStatus(booking.getCar(), CarStatus.AVAILABLE);
         String url = processRentalPayment(booking, paymentMethod, request);
-        BookingResponse response = buildBookingResponse(booking, BookingStatus.AWAITING_PICKUP_CONFIRMATION);
+        BookingResponse response = buildBookingResponse(booking, BookingStatus.AWAITING_PICKUP_CONFIRMATION.getMessage());
         response.setVnPayUrl(url);
         return response;
     }
@@ -120,7 +121,7 @@ public class BookingService {
         updateBookingStatus(booking, BookingStatus.CANCELED);
         updateCarStatus(booking.getCar(), CarStatus.AVAILABLE);
 
-        return buildBookingResponse(booking, BookingStatus.CANCELED);
+        return buildBookingResponse(booking, BookingStatus.CANCELED.getMessage());
     }
 
     public DataPaginationResponse getUserBookings(Long userId, Pageable pageable) {
@@ -272,16 +273,18 @@ public class BookingService {
         bookingRepository.save(booking);
     }
 
-    private BookingResponse buildBookingResponse(Booking booking, BookingStatus status) {
+    private BookingResponse buildBookingResponse(Booking booking, String status) {
         BookingResponse response = bookingMapper.toBookingResponse(booking);
-        response.setBookingStatus(status.getMessage());
+        response.setBookingStatus(status);
         response.setCarId(booking.getCar().getId());
         response.setId(booking.getId());
         return response;
     }
 
     private DataPaginationResponse buildPaginatedResponse(Page<Booking> bookings) {
-        List<BookingResponse> responses = bookingMapper.toBookingResponses(bookings.getContent());
+        List<BookingResponse> responses = bookings.getContent().stream()
+                .map(booking -> buildBookingResponse(booking, booking.getBookingStatus()))
+                .collect(Collectors.toList());
         Meta meta = new Meta();
         meta.setPage(bookings.getNumber() + 1);
         meta.setSize(bookings.getSize());
