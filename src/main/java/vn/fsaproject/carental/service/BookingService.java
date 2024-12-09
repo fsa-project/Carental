@@ -67,7 +67,7 @@ public class BookingService {
 
         Booking booking = initializeBooking(startBookingDTO, car, user, renter, driver);
         bookingRepository.save(booking);
-        return buildBookingResponse(booking, BookingStatus.PENDING_DEPOSIT);
+        return buildBookingResponse(booking, BookingStatus.PENDING_DEPOSIT.getMessage());
     }
 
     public BookingResponse confirmBooking(Long bookingId, String paymentMethod, HttpServletRequest request) {
@@ -87,7 +87,7 @@ public class BookingService {
 
         updateCarStatus(booking.getCar(), CarStatus.BOOKED);
         updateBookingStatus(booking, BookingStatus.CONFIRMED);
-        return buildBookingResponse(booking, BookingStatus.CONFIRMED);
+        return buildBookingResponse(booking, BookingStatus.CONFIRMED.getMessage());
     }
 
     public BookingResponse ownerConfirmPickup(Long bookingId, Long ownerId) {
