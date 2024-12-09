@@ -3,12 +3,15 @@ package vn.fsaproject.carental.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import vn.fsaproject.carental.dto.request.CreateCarDTO;
 import vn.fsaproject.carental.dto.request.StartBookingDTO;
 import vn.fsaproject.carental.dto.response.BookingResponse;
 import vn.fsaproject.carental.dto.response.DataPaginationResponse;
+import vn.fsaproject.carental.entities.UserBooking;
 import vn.fsaproject.carental.service.BookingService;
 import vn.fsaproject.carental.utils.SecurityUtil;
 import vn.fsaproject.carental.utils.annotation.ApiMessage;
@@ -26,36 +29,49 @@ public class BookingController {
         this.securityUtil = securityUtil;
     }
 
-    @PostMapping("/new-booking")
-    public ResponseEntity<?> createBooking(
+    @PostMapping(value = "/new-booking", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE,
+            MediaType.APPLICATION_OCTET_STREAM_VALUE })
+    public ResponseEntity<BookingResponse> createBooking(
             @RequestParam("carId") Long carId,
-            @RequestBody StartBookingDTO startBookingDTO
-            ){
-        try{
+            @RequestPart("renter") UserBooking renter,
+            @RequestPart("driver") UserBooking driver,
+            @RequestPart("bookingInfo") StartBookingDTO startBookingDTO) {
+        try {
             Long userId = securityUtil.getCurrentUserId();
-            BookingResponse response = bookingService.createBooking(userId, carId, startBookingDTO);
+            BookingResponse response = bookingService.createBooking(userId, carId, startBookingDTO, renter, driver);
             return ResponseEntity.ok(response);
         }catch(RuntimeException e){
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(null);
         }
     }
     @PostMapping("/confirm/{bookingId}")
     public ResponseEntity<BookingResponse> confirmBooking(
             @PathVariable Long bookingId,
             @RequestParam String paymentMethod,
-            HttpServletRequest request
-    ) {
+            HttpServletRequest request) {
         try {
-            BookingResponse response = bookingService.confirmBooking(bookingId, paymentMethod,request);
+            BookingResponse response = bookingService.confirmBooking(bookingId, paymentMethod, request);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(null);
         }
     }
+
+    @PostMapping("/confirm2/{bookingId}")
+    public ResponseEntity<BookingResponse> updatePaymentStatus(@PathVariable Long bookingId,
+            @RequestParam String status) {
+
+        try {
+            BookingResponse response = bookingService.updateBookingStatus(bookingId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
     @PatchMapping("/{bookingId}/confirm-pickup")
     public ResponseEntity<BookingResponse> ownerConfirmPickup(
-            @PathVariable Long bookingId
-    ) {
+            @PathVariable Long bookingId) {
         Long userId = securityUtil.getCurrentUserId();
         BookingResponse response = bookingService.ownerConfirmPickup(bookingId, userId);
         return ResponseEntity.ok(response);

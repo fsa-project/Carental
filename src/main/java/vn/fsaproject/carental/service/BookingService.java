@@ -13,15 +13,9 @@ import vn.fsaproject.carental.dto.request.StartBookingDTO;
 import vn.fsaproject.carental.dto.response.BookingResponse;
 import vn.fsaproject.carental.dto.response.DataPaginationResponse;
 import vn.fsaproject.carental.dto.response.Meta;
-import vn.fsaproject.carental.entities.Booking;
-import vn.fsaproject.carental.entities.Car;
-import vn.fsaproject.carental.entities.Transaction;
-import vn.fsaproject.carental.entities.User;
+import vn.fsaproject.carental.entities.*;
 import vn.fsaproject.carental.mapper.BookingMapper;
-import vn.fsaproject.carental.repository.BookingRepository;
-import vn.fsaproject.carental.repository.CarRepository;
-import vn.fsaproject.carental.repository.TransactionRepository;
-import vn.fsaproject.carental.repository.UserRepository;
+import vn.fsaproject.carental.repository.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,24 +34,27 @@ public class BookingService {
     private final TransactionRepository transactionRepository;
     private final BookingMapper bookingMapper;
     private final VNPAYService vnpayService;
+    private final UserBookingRepository userBookingRepository;
 
     public BookingService(BookingRepository bookingRepository,
                           CarRepository carRepository,
                           BookingMapper bookingMapper,
                           UserRepository userRepository,
                           TransactionRepository transactionRepository,
-                          VNPAYService vnpayService
-                          ) {
+                          VNPAYService vnpayService,
+                          UserBookingRepository userBookingRepository
+    ) {
         this.bookingRepository = bookingRepository;
         this.carRepository = carRepository;
         this.bookingMapper = bookingMapper;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.vnpayService = vnpayService;
+        this.userBookingRepository = userBookingRepository;
     }
 
     // Main booking flow methods
-    public BookingResponse createBooking(Long userId, Long carId, StartBookingDTO startBookingDTO) {
+    public BookingResponse createBooking(Long userId, Long carId, StartBookingDTO startBookingDTO, UserBooking renter, UserBooking driver) {
         Car car = findCarById(carId);
         User user = findUserById(userId);
         if (user.getCars().contains(car)){
@@ -68,10 +65,9 @@ public class BookingService {
         Date endDateTime = startBookingDTO.getEndDateTime();
         validateCarAvailability(car, startDateTime, endDateTime);
 
-        Booking booking = initializeBooking(startBookingDTO, car, user);
+        Booking booking = initializeBooking(startBookingDTO, car, user, renter, driver);
         bookingRepository.save(booking);
-
-        return buildBookingResponse(booking, BookingStatus.PENDING_DEPOSIT.getMessage());
+        return buildBookingResponse(booking, BookingStatus.PENDING_DEPOSIT);
     }
 
     public BookingResponse confirmBooking(Long bookingId, String paymentMethod, HttpServletRequest request) {
@@ -84,6 +80,16 @@ public class BookingService {
         response.setVnPayUrl(url);
         return response;
     }
+
+    public BookingResponse updateBookingStatus(Long bookingId) {
+        Booking booking = findBookingById(bookingId);
+        validateBookingStatus(booking, BookingStatus.PENDING_DEPOSIT);
+
+        updateCarStatus(booking.getCar(), CarStatus.BOOKED);
+        updateBookingStatus(booking, BookingStatus.CONFIRMED);
+        return buildBookingResponse(booking, BookingStatus.CONFIRMED);
+    }
+
     public BookingResponse ownerConfirmPickup(Long bookingId, Long ownerId) {
         Booking booking = findBookingById(bookingId);
 
@@ -177,10 +183,14 @@ public class BookingService {
         }
     }
 
-    private Booking initializeBooking(StartBookingDTO dto, Car car, User user) {
+    private Booking initializeBooking(StartBookingDTO dto, Car car, User user, UserBooking renter, UserBooking driver) {
         Booking booking = bookingMapper.toBooking(dto);
+        userBookingRepository.save(renter);
+        userBookingRepository.save(driver);
         booking.setCar(car);
         booking.setUser(user);
+        booking.setRenter(renter);
+        booking.setDriver(driver);
         booking.setBookingStatus(BookingStatus.PENDING_DEPOSIT.getMessage());
         return booking;
     }
@@ -196,13 +206,11 @@ public class BookingService {
         }
 
         if (paymentMethod.equalsIgnoreCase("WALLET")) {
-            deductWalletBalance(user,booking, depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
+            deductWalletBalance(user, booking, depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
             booking.setPaymentMethod(paymentMethod);
         }
         if (paymentMethod.equalsIgnoreCase("VNPAY")) {
-            url =  vnpayService.createOrder(request,deposit,"Thanh toan don hang:"+VNPAYConfig.getRandomNumber(8),VNPAYConfig.vnp_Returnurl);
-            booking.setPaymentMethod(paymentMethod);
-            deductWalletBalance(user,booking,depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
+            url = vnpayService.createOrder(request, deposit, "" + booking.getId(), VNPAYConfig.vnp_Returnurl);
         }
         return url;
     }
@@ -217,7 +225,6 @@ public class BookingService {
         if (user.getWallet() < remainingFeeAmount) {
             throw new RuntimeException("Insufficient wallet balance for rental payment");
         }
-
         if (paymentMethod.equalsIgnoreCase("WALLET")) {
             deductWalletBalance(user,booking, remainingFeeAmount, TransactionType.PAYMENT, "Rental payment processed");
             refundWalletBalance(user,booking, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
@@ -229,7 +236,6 @@ public class BookingService {
             deductWalletBalance(user,booking,remainingFeeAmount, TransactionType.PAYMENT, "Deposit payment processed");
         }
         return url;
-
     }
 
     private void deductWalletBalance(User customer,Booking booking, double amount, TransactionType type, String description) {
@@ -252,7 +258,7 @@ public class BookingService {
         recordTransaction(customer,booking, amount, type, description);
     }
 
-    private void recordTransaction(User user,Booking booking, double amount, TransactionType type, String description) {
+    private void recordTransaction(User user, Booking booking, double amount, TransactionType type, String description) {
         Transaction transaction = new Transaction();
         transaction.setUser(user);
         transaction.setTransactionDate(LocalDateTime.now());

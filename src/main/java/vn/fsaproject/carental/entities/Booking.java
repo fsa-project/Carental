@@ -1,11 +1,20 @@
 package vn.fsaproject.carental.entities;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.util.Date;
 import java.util.List;
 
 @Entity
 @Table(name = "bookings")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Booking {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,94 +30,21 @@ public class Booking {
 
     @OneToOne(mappedBy = "booking")
     private Feedback feedback;
+
     @OneToMany(mappedBy = "booking")
     private List<Transaction> transactions;
 
-    public List<Transaction> getTransactions() {
-        return transactions;
-    }
+    @ManyToOne
+    @JoinColumn(name = "renter_id")
+    private UserBooking renter;
 
-    public void setTransactions(List<Transaction> transactions) {
-        this.transactions = transactions;
-    }
+    @ManyToOne
+    @JoinColumn(name = "driver_id")
+    private UserBooking driver;
 
     private Date startDateTime;
     private Date endDateTime;
     private String driversInformation;
     private String paymentMethod;
     private String bookingStatus;
-
-    // Getters and setters
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Car getCar() {
-        return car;
-    }
-
-    public void setCar(Car car) {
-        this.car = car;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public Date getStartDateTime() {
-        return startDateTime;
-    }
-
-    public void setStartDateTime(Date startDateTime) {
-        this.startDateTime = startDateTime;
-    }
-
-    public Date getEndDateTime() {
-        return endDateTime;
-    }
-
-    public void setEndDateTime(Date endDateTime) {
-        this.endDateTime = endDateTime;
-    }
-
-    public String getDriversInformation() {
-        return driversInformation;
-    }
-
-    public void setDriversInformation(String driversInformation) {
-        this.driversInformation = driversInformation;
-    }
-
-    public String getPaymentMethod() {
-        return paymentMethod;
-    }
-
-    public void setPaymentMethod(String paymentMethod) {
-        this.paymentMethod = paymentMethod;
-    }
-
-    public String getBookingStatus() {
-        return bookingStatus;
-    }
-
-    public void setBookingStatus(String bookingStatus) {
-        this.bookingStatus = bookingStatus;
-    }
-
-    public Feedback getFeedback() {
-        return feedback;
-    }
-
-    public void setFeedback(Feedback feedback) {
-        this.feedback = feedback;
-    }
 }

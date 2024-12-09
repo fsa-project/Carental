@@ -57,7 +57,8 @@ public class CarService {
             CarImageRepository carImageRepository,
             UserService userService,
             BookingRepository bookingRepository,
-            UserRepository userRepository, SecurityUtil securityUtil) {
+            UserRepository userRepository,
+            SecurityUtil securityUtil) {
         this.uploadDir = uploadDir;
         this.carRepository = carRepository;
         this.carMapper = carMapper;
