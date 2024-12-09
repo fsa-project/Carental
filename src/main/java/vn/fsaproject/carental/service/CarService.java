@@ -148,13 +148,18 @@ public class CarService {
         return createPaginatedResponse(pageable, cars.getContent(),list_cars.size());
     }
 
-    public CarResponse handleUpdateCar(UpdateCarDTO carDTO, MultipartFile[] images, Long carId, Long userId)
+    public CarResponse handleUpdateCar(UpdateCarDTO carDTO, MultipartFile[] newImages, Long carId, Long userId)
             throws IOException {
         Car car = validateUserCarOwnership(carId, userId);
         carMapper.updateCar(car, carDTO);
 
-        deleteCarImages(carId);
-        car.setImages(saveImages(car, images));
+        car.getImages().forEach(image -> image.setCar(null)); // Break the relationship
+        car.getImages().clear(); // Clear the list
+
+        if (newImages != null && newImages.length > 0) {
+            List<CarImage> carImages = saveImages(car, newImages);
+            car.getImages().addAll(carImages); // Add new images to the list
+        }
 
         carRepository.save(car);
         return createCarResponse(car);
@@ -201,6 +206,7 @@ public class CarService {
             CarImage carImage = new CarImage();
             carImage.setFilePath(filePath.toString());
             carImage.setCar(car);
+            //carImageRepository.save(carImage);
             carImages.add(carImage);
         }
         return carImages;
@@ -266,7 +272,7 @@ public class CarService {
     private Car validateUserCarOwnership(Long carId, Long userId) {
         Car car = carRepository.findById(carId)
                 .orElseThrow(() -> new RuntimeException("Car not found"));
-        User user = userRepository.findById(carId).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         if (!user.getCars().contains(car)) {
             throw new RuntimeException("Car does not belong to user");
         }

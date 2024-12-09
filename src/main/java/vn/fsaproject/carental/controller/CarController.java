@@ -83,7 +83,7 @@ public class CarController {
 
     @ApiMessage("Car update successfully!!!")
     @PutMapping(value = "/update/{carId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<CarResponse> updateCar(
+    public ResponseEntity<?> updateCar(
             @RequestPart("metadata") UpdateCarDTO carDTO,
             @PathVariable("carId") Long carId,
             @RequestParam("images") MultipartFile[] images) {
@@ -95,7 +95,7 @@ public class CarController {
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(null);
+                    .body(e.getMessage());
         }
     }
 
