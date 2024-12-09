@@ -177,8 +177,8 @@ public class BookingService {
     }
 
     private void validateCancellableBookingStatus(Booking booking) {
-        if (!booking.getBookingStatus().equals(BookingStatus.PENDING_DEPOSIT.getMessage()) &&
-                !booking.getBookingStatus().equals(BookingStatus.CONFIRMED.getMessage())) {
+        if (!booking.getBookingStatus().equalsIgnoreCase(BookingStatus.PENDING_DEPOSIT.getMessage()) &&
+                !booking.getBookingStatus().equalsIgnoreCase(BookingStatus.AWAITING_PICKUP_CONFIRMATION.getMessage())) {
             throw new RuntimeException("Booking cannot be cancelled in this current state");
         }
     }
@@ -230,11 +230,11 @@ public class BookingService {
             refundWalletBalance(user,booking, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
             booking.setPaymentMethod(paymentMethod);
         }
-        if (paymentMethod.equalsIgnoreCase("VNPAY")) {
-            url =  vnpayService.createOrder(request,remainingFee,"Thanh toan don hang:"+VNPAYConfig.getRandomNumber(8),VNPAYConfig.vnp_Returnurl);
-            booking.setPaymentMethod(paymentMethod);
-            deductWalletBalance(user,booking,remainingFeeAmount, TransactionType.PAYMENT, "Deposit payment processed");
-        }
+//        if (paymentMethod.equalsIgnoreCase("VNPAY")) {
+//            url =  vnpayService.createOrder(request,remainingFee,"Thanh toan don hang:"+VNPAYConfig.getRandomNumber(8),VNPAYConfig.vnp_Returnurl);
+//            booking.setPaymentMethod(paymentMethod);
+//            deductWalletBalance(user,booking,remainingFeeAmount, TransactionType.PAYMENT, "Deposit payment processed");
+//        }
         return url;
     }
 
