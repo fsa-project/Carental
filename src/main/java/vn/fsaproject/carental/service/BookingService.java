@@ -134,6 +134,10 @@ public class BookingService {
         Page<Booking> bookings = bookingRepository.findByUserId(userId, pageable);
         return buildPaginatedResponse(bookings);
     }
+    public BookingResponse getBooking(Long bookingId) {
+        Booking booking = findBookingById(bookingId);
+        return buildBookingResponse(booking, booking.getBookingStatus());
+    }
 
     // Helper methods
     private void validateCarAvailability(Car car, Date startDateTime, Date endDateTime) {
@@ -175,6 +179,7 @@ public class BookingService {
             throw new RuntimeException("Booking is not in a state to be " + expectedStatus.name().toLowerCase());
         }
     }
+
 
     private void validateCancellableBookingStatus(Booking booking) {
         if (!booking.getBookingStatus().equalsIgnoreCase(BookingStatus.PENDING_DEPOSIT.getMessage()) &&

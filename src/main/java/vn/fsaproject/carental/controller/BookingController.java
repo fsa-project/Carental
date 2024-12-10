@@ -100,6 +100,17 @@ public class BookingController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+    @GetMapping("/booking-detail/{bookingId}")
+    public ResponseEntity<?> getBookingDetail(@PathVariable Long bookingId) {
+        try {
+            BookingResponse response = bookingService.getBooking(bookingId);
+            return ResponseEntity.ok(response);
+        }catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+
 
     @GetMapping("/all-booking")
     public ResponseEntity<DataPaginationResponse> getAllBookings(Pageable pageable) {
