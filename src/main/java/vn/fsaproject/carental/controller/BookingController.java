@@ -68,6 +68,14 @@ public class BookingController {
             return ResponseEntity.badRequest().body(null);
         }
     }
+    @GetMapping("/owner-booking")
+    @ApiMessage("owner booking list")
+    public ResponseEntity<DataPaginationResponse> ownerBookingList(Pageable pageable) {
+        Long ownerId = securityUtil.getCurrentUserId();
+        DataPaginationResponse response = bookingService.ownerBookingList(ownerId,pageable);
+        return ResponseEntity.ok(response);
+    }
+
     @PatchMapping("/{bookingId}/confirm-deposit")
     public ResponseEntity<BookingResponse> ownerConfirmDeposit(
             @PathVariable Long bookingId) {
