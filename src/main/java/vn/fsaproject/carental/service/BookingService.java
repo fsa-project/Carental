@@ -3,6 +3,7 @@ package vn.fsaproject.carental.service;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import vn.fsaproject.carental.config.VNPAYConfig;
@@ -21,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -98,6 +100,14 @@ public class BookingService {
         updateBookingStatus(booking, BookingStatus.CONFIRMED);
 
         return buildBookingResponse(booking, BookingStatus.CONFIRMED.getMessage());
+    }
+    public DataPaginationResponse ownerBookingList(Long ownerId, Pageable pageable) {
+        List<Car> cars = carRepository.findByUserId(ownerId);
+        List<Booking> bookings = cars.stream()
+                .flatMap(car -> bookingRepository.findByCarId(car.getId()).stream())
+                .collect(Collectors.toList());
+        Page<Booking> pagedBookings = new PageImpl<>(bookings, pageable, bookings.size());
+        return buildPaginatedResponse(pagedBookings);
     }
     public BookingResponse ownerConfirmPickup(Long bookingId, Long ownerId) {
         Booking booking = findBookingById(bookingId);
@@ -186,7 +196,7 @@ public class BookingService {
 
     private void validateCancellableBookingStatus(Booking booking) {
         if (!booking.getBookingStatus().equalsIgnoreCase(BookingStatus.PENDING_DEPOSIT.getMessage()) &&
-                !booking.getBookingStatus().equalsIgnoreCase(BookingStatus.AWAITING_PICKUP_CONFIRMATION.getMessage())) {
+                !booking.getBookingStatus().equalsIgnoreCase(BookingStatus.CONFIRMED.getMessage())) {
             throw new RuntimeException("Booking cannot be cancelled in this current state");
         }
     }
