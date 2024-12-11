@@ -91,6 +91,13 @@ public class BookingController {
         BookingResponse response = bookingService.ownerConfirmPickup(bookingId, userId);
         return ResponseEntity.ok(response);
     }
+    @PatchMapping("/{bookingId}/confirm-payment")
+    public ResponseEntity<BookingResponse> ownerConfirmPayment(
+            @PathVariable Long bookingId) {
+        Long userId = securityUtil.getCurrentUserId();
+        BookingResponse response = bookingService.ownerConfirmPayment(bookingId, userId);
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping("/complete/{bookingId}")
     public ResponseEntity<?> completeBooking(@PathVariable Long bookingId,
@@ -98,7 +105,7 @@ public class BookingController {
                                              HttpServletRequest request
     ) {
         try{
-            BookingResponse response = bookingService.completeBooking(bookingId,paymentMethod,request);
+            BookingResponse response = bookingService.paymentPaid(bookingId,paymentMethod,request);
             return ResponseEntity.ok(response);
         }catch (RuntimeException e) {
             log.error("Error completing booking: {}", e.getMessage());
