@@ -7,6 +7,7 @@ public enum BookingStatus {
     DEPOSIT_PAID("Deposit Paid"),
     IN_PROGRESS("In Progress"),
     PENDING_PAYMENT("Pending Payment"),
+    PAYMENT_PAID("Payment Paid"),
     COMPLETED("Completed"),
     CANCELED("Canceled");
     ;

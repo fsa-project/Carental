@@ -118,18 +118,28 @@ public class BookingService {
 
         return buildBookingResponse(booking, BookingStatus.IN_PROGRESS.getMessage());
     }
+    public BookingResponse ownerConfirmPayment(Long bookingId, Long ownerId) {
+        Booking booking = findBookingById(bookingId);
+
+        validateBookingStatus(booking, BookingStatus.PAYMENT_PAID);
+
+        updateBookingStatus(booking, BookingStatus.COMPLETED);
+
+        updateCarStatus(booking.getCar(), CarStatus.AVAILABLE);
+
+        return buildBookingResponse(booking, BookingStatus.COMPLETED.getMessage());
+    }
 
     /**
      * Change the car status after completing the booking to 'available' instead of 'stopped' as before.
      * The car can still be manually set to 'stopped' using the {@link CarService#updateToStopped} method.
      */
-    public BookingResponse completeBooking(Long bookingId, String paymentMethod, HttpServletRequest request) {
+    public BookingResponse paymentPaid(Long bookingId, String paymentMethod, HttpServletRequest request) {
         Booking booking = findBookingById(bookingId);
         validateBookingStatus(booking, BookingStatus.IN_PROGRESS);
-        updateBookingStatus(booking, BookingStatus.COMPLETED);
-        updateCarStatus(booking.getCar(), CarStatus.AVAILABLE);
+        updateBookingStatus(booking, BookingStatus.PAYMENT_PAID);
         String url = processRentalPayment(booking, paymentMethod, request);
-        BookingResponse response = buildBookingResponse(booking, BookingStatus.AWAITING_PICKUP_CONFIRMATION.getMessage());
+        BookingResponse response = buildBookingResponse(booking, BookingStatus.PAYMENT_PAID.getMessage());
         response.setVnPayUrl(url);
         return response;
     }
