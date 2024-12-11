@@ -68,6 +68,13 @@ public class BookingController {
             return ResponseEntity.badRequest().body(null);
         }
     }
+    @PatchMapping("/{bookingId}/confirm-deposit")
+    public ResponseEntity<BookingResponse> ownerConfirmDeposit(
+            @PathVariable Long bookingId) {
+        Long userId = securityUtil.getCurrentUserId();
+        BookingResponse response = bookingService.ownerConfirmDeposit(bookingId, userId);
+        return ResponseEntity.ok(response);
+    }
 
     @PatchMapping("/{bookingId}/confirm-pickup")
     public ResponseEntity<BookingResponse> ownerConfirmPickup(
