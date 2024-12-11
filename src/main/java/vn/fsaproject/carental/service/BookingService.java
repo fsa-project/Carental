@@ -220,7 +220,7 @@ public class BookingService {
         User user = booking.getUser();
         Car car = booking.getCar();
         double rentalFee = calculateRentalFee(booking);
-        double remainingFeeAmount = rentalFee - car.getDeposit();
+        double remainingFeeAmount = rentalFee;
         int remainingFee = (int) remainingFeeAmount;
         if (user.getWallet() < remainingFeeAmount) {
             throw new RuntimeException("Insufficient wallet balance for rental payment");
