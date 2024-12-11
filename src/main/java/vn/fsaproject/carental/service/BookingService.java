@@ -134,6 +134,10 @@ public class BookingService {
         Page<Booking> bookings = bookingRepository.findByUserId(userId, pageable);
         return buildPaginatedResponse(bookings);
     }
+    public BookingResponse getBooking(Long bookingId) {
+        Booking booking = findBookingById(bookingId);
+        return buildBookingResponse(booking, booking.getBookingStatus());
+    }
 
     // Helper methods
     private void validateCarAvailability(Car car, Date startDateTime, Date endDateTime) {
@@ -220,13 +224,12 @@ public class BookingService {
         User user = booking.getUser();
         Car car = booking.getCar();
         double rentalFee = calculateRentalFee(booking);
-        double remainingFeeAmount = rentalFee;
-        int remainingFee = (int) remainingFeeAmount;
-        if (user.getWallet() < remainingFeeAmount) {
+//        int remainingFee = (int) remainingFeeAmount;
+        if (user.getWallet() < rentalFee) {
             throw new RuntimeException("Insufficient wallet balance for rental payment");
         }
         if (paymentMethod.equalsIgnoreCase("WALLET")) {
-            deductWalletBalance(user,booking, remainingFeeAmount, TransactionType.PAYMENT, "Rental payment processed");
+            deductWalletBalance(user,booking, rentalFee, TransactionType.PAYMENT, "Rental payment processed");
             refundWalletBalance(user,booking, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
             booking.setPaymentMethod(paymentMethod);
         }
@@ -283,6 +286,8 @@ public class BookingService {
         BookingResponse response = bookingMapper.toBookingResponse(booking);
         response.setBookingStatus(status);
         response.setCarId(booking.getCar().getId());
+        response.setRenter(booking.getRenter());
+        response.setDriver(booking.getDriver());
         response.setId(booking.getId());
         return response;
     }
