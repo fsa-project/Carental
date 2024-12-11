@@ -74,9 +74,9 @@ public class BookingService {
         Booking booking = findBookingById(bookingId);
         validateBookingStatus(booking, BookingStatus.PENDING_DEPOSIT);
 
-        updateBookingStatus(booking,BookingStatus.AWAITING_PICKUP_CONFIRMATION);
+        updateBookingStatus(booking,BookingStatus.DEPOSIT_PAID);
         String url = processDepositPayment(booking, paymentMethod, request);
-        BookingResponse response = buildBookingResponse(booking, BookingStatus.AWAITING_PICKUP_CONFIRMATION.getMessage());
+        BookingResponse response = buildBookingResponse(booking, BookingStatus.CONFIRMED.getMessage());
         response.setVnPayUrl(url);
         return response;
     }
@@ -90,15 +90,19 @@ public class BookingService {
         return buildBookingResponse(booking, BookingStatus.CONFIRMED.getMessage());
     }
 
+    public BookingResponse ownerConfirmDeposit(Long bookingId, Long ownerId) {
+        Booking booking = findBookingById(bookingId);
+
+        validateBookingStatus(booking, BookingStatus.DEPOSIT_PAID);
+
+        updateBookingStatus(booking, BookingStatus.CONFIRMED);
+
+        return buildBookingResponse(booking, BookingStatus.CONFIRMED.getMessage());
+    }
     public BookingResponse ownerConfirmPickup(Long bookingId, Long ownerId) {
         Booking booking = findBookingById(bookingId);
 
-        // Ensure the owner is the car owner
-        if (!booking.getCar().getUser().getId().equals(ownerId)) {
-            throw new RuntimeException("Only the car owner can confirm pickup.");
-        }
-
-        validateBookingStatus(booking, BookingStatus.AWAITING_PICKUP_CONFIRMATION);
+        validateBookingStatus(booking, BookingStatus.CONFIRMED);
 
         updateBookingStatus(booking, BookingStatus.IN_PROGRESS);
 

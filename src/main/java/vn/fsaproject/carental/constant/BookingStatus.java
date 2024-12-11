@@ -4,6 +4,7 @@ public enum BookingStatus {
     PENDING_DEPOSIT("Pending Deposit"),
     CONFIRMED("Confirmed"),
     AWAITING_PICKUP_CONFIRMATION("Awaiting Pickup Confirmation"),
+    DEPOSIT_PAID("Deposit Paid"),
     IN_PROGRESS("In Progress"),
     PENDING_PAYMENT("Pending Payment"),
     COMPLETED("Completed"),
