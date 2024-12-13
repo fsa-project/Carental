@@ -86,7 +86,7 @@ public class CarController {
     public ResponseEntity<?> updateCar(
             @RequestPart("metadata") UpdateCarDTO carDTO,
             @PathVariable("carId") Long carId,
-            @RequestParam("images") MultipartFile[] images) {
+            @RequestParam(value = "images", required = false) MultipartFile[] images) {
         try {
             Long userId = securityUtil.getCurrentUserId();
             CarResponse carResponse = carService.handleUpdateCar(carDTO, images, carId, userId);

@@ -152,12 +152,13 @@ public class CarService {
     public CarResponse handleUpdateCar(UpdateCarDTO carDTO, MultipartFile[] newImages, Long carId, Long userId)
             throws IOException {
         Car car = validateUserCarOwnership(carId, userId);
+        List<CarImage> oldImages = car.getImages();
+
         carMapper.updateCar(car, carDTO);
 
-        car.getImages().forEach(image -> image.setCar(null)); // Break the relationship
-        car.getImages().clear(); // Clear the list
-
         if (newImages != null && newImages.length > 0) {
+            car.getImages().forEach(image -> image.setCar(null)); // Break the relationship
+            car.getImages().clear(); // Clear the list
             List<CarImage> carImages = saveImages(car, newImages);
             car.getImages().addAll(carImages); // Add new images to the list
         }

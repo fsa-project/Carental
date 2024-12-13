@@ -62,7 +62,7 @@ public class BookingController {
             @RequestParam String status) {
 
         try {
-            BookingResponse response = bookingService.updateBookingStatus(bookingId);
+            BookingResponse response = bookingService.updateBookingStatus2(status, bookingId);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(null);
@@ -131,8 +131,6 @@ public class BookingController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-
-
 
     @GetMapping("/all-booking")
     public ResponseEntity<DataPaginationResponse> getAllBookings(Pageable pageable) {
