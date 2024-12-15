@@ -71,7 +71,7 @@ public class UserService {
     public DataPaginationResponse getUserTransactions(long userId,Pageable pageable) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return createPaginatedResponse(pageable, user.getTransactions());
+        return createPaginatedResponse(pageable, user.getRecipients());
     }
     public UserResponse handleUserById(long id) {
         User user = userRepository.findById(id).orElse(null);

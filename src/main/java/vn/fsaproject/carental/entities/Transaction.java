@@ -18,31 +18,34 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "transaction_id", unique = true, nullable = false)
+    @Column(name = "transaction_id", unique = true)
     private String transactionId;
 
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "sender_id")
+    private User sender;
+
+    @ManyToOne
+    @JoinColumn(name = "recipient_id")
+    private User recipient;
 
     @ManyToOne
     @JoinColumn(name = "booking_id", nullable = true)
     private Booking booking;
 
-    @Column(nullable = false)
     private double amount;
 
-    @Column(nullable = false)
     private String currency = "VND";
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private TransactionType transactionType;
 
-    @Column(nullable = false)
     private String status;
 
-    @Column(name = "transaction_date", nullable = false)
+    @Column(name = "payment_type")
+    private String paymentType;
+
+    @Column(name = "transaction_date")
     private LocalDateTime transactionDate;
 
     @Column(name = "payment_reference_id")
@@ -78,6 +81,4 @@ public class Transaction {
     @Column(name = "refund_transaction_id")
     private Long refundTransactionId;
 
-    @Column(name = "metadata", columnDefinition = "json")
-    private String metadata;
 }

@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 public class VNPAYConfig {
@@ -90,7 +91,35 @@ public class VNPAYConfig {
         return null;
     }
 
-    public static boolean verifyHash(String secureHash, String hashData, String vnpHashSecret) {
-        return false;
+    public static boolean verifyHash(Map<String, String> vnp_Params) {
+        String receivedSecureHash = vnp_Params.remove("vnp_SecureHash");
+
+        if (receivedSecureHash == null || receivedSecureHash.isEmpty()) {
+            return false;
+        }
+
+        vnp_Params.remove("vnp_SecureHashType");
+
+        List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
+        Collections.sort(fieldNames);
+
+        StringBuilder hashData = new StringBuilder();
+        for (String fieldName : fieldNames) {
+            String fieldValue = vnp_Params.get(fieldName);
+            if (fieldValue != null && !fieldValue.isEmpty()) {
+                hashData.append(fieldName)
+                        .append('=')
+                        .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
+                hashData.append('&');
+            }
+        }
+
+        if (hashData.length() > 0) {
+            hashData.deleteCharAt(hashData.length() - 1);
+        }
+
+        String generatedSecureHash = hmacSHA512(vnp_HashSecret, hashData.toString());
+
+        return generatedSecureHash.equals(receivedSecureHash);
     }
 }

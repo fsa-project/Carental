@@ -19,5 +19,10 @@ public class PayPalProcessor implements PaymentProcessor {
         // Xác minh callback PayPal (logic chi tiết đã trình bày)
         return null;
     }
+
+    @Override
+    public String getType() {
+        return "PAYPAL";
+    }
 }
 

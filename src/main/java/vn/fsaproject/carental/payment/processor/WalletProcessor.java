@@ -15,4 +15,10 @@ public class WalletProcessor implements PaymentProcessor {
     public String handleCallback(Map<String, String> parameters) {
         return "";
     }
+
+    @Override
+    public String getType() {
+        return "WALLET";
+    }
+
 }

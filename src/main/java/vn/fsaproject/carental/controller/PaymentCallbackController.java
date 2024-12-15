@@ -1,30 +1,48 @@
 package vn.fsaproject.carental.controller;
 
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import vn.fsaproject.carental.dto.response.BookingResponse;
 import vn.fsaproject.carental.entities.Transaction;
 import vn.fsaproject.carental.repository.TransactionRepository;
+import vn.fsaproject.carental.service.BookingService;
 
+import java.util.Map;
+
+@Slf4j
 @RestController
 @RequestMapping("/payment")
 public class PaymentCallbackController {
 
     private final TransactionRepository transactionRepository;
+    private final BookingService bookingService;
 
-    public PaymentCallbackController(TransactionRepository transactionRepository) {
+    public PaymentCallbackController(TransactionRepository transactionRepository,
+                                     BookingService bookingService) {
         this.transactionRepository = transactionRepository;
+        this.bookingService = bookingService;
     }
 
-    @PostMapping("/call-back")
-    public String handleCallback(@RequestParam String transactionId,
-                                 @RequestParam String status) {
-        Transaction transaction = transactionRepository.findByTransactionId(transactionId);
+    @PostMapping("/call-back/{bookingId}")
+    public ResponseEntity<BookingResponse> handleCallback(@PathVariable Long bookingId,
+                                                          @RequestBody Map<String, String> params) {
 
-        transaction.setStatus(status);
-        transactionRepository.save(transaction);
-
-        return "Transaction updated";
+//        Transaction transaction = transactionRepository.findByTransactionId(transactionId);
+//
+//        transaction.setStatus(status);
+//        transactionRepository.save(transaction);
+        try {
+            if (params.containsKey("vnp_TmnCode")) {
+                BookingResponse response = bookingService.callbackProcess(bookingId, params);
+                return ResponseEntity.ok(response);
+            } else if (params.containsKey("txn_id")) {
+                // Paypal call back
+                return ResponseEntity.badRequest().body(null);
+            }
+            return ResponseEntity.badRequest().body(null);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 }

@@ -1,5 +1,6 @@
 package vn.fsaproject.carental.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -33,8 +34,12 @@ public class User {
     private Double wallet;
     @Column(columnDefinition = "MEDIUMTEXT")
     private String refreshToken;
-    @OneToMany(mappedBy = "user")
-    List<Transaction> transactions;
+    @OneToMany(mappedBy = "sender")
+    @JsonIgnore
+    List<Transaction> senders;
+    @OneToMany(mappedBy = "recipient")
+    @JsonIgnore
+    List<Transaction> recipients;
     @ManyToOne
     @JoinColumn(name = "role_id") // Cột role_id là khóa ngoại trỏ tới bảng Role
     private Role role;

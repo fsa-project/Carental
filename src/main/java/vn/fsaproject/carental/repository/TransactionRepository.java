@@ -12,7 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
-    List<Transaction> findByUser(User user);
+    List<Transaction> findBySender(User sender);
 
     List<Transaction> findByBooking(Booking booking);
 
@@ -22,5 +22,5 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     Transaction findByTransactionId(String transactionId);
 
-    List<Transaction> findByUserId(Long userId);
+    List<Transaction> findBySenderId(Long senderId);
 }

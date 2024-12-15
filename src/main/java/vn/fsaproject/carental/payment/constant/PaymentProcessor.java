@@ -8,5 +8,7 @@ public interface PaymentProcessor {
     String generatePaymentUrl(Transaction transaction);
 
     String handleCallback(Map<String, String> parameters);
+
+    String getType();
 }
 
