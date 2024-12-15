@@ -81,4 +81,16 @@ public class VNPAYConfig {
         }
         return sb.toString();
     }
+
+    public static String generateHashData(Map<String, String> vnpParams) {
+        return null;
+    }
+
+    public static String createQueryString(Map<String, String> vnpParams) {
+        return null;
+    }
+
+    public static boolean verifyHash(String secureHash, String hashData, String vnpHashSecret) {
+        return false;
+    }
 }
