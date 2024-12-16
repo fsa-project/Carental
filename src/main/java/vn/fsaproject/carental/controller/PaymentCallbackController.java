@@ -28,17 +28,16 @@ public class PaymentCallbackController {
     public ResponseEntity<BookingResponse> handleCallback(@PathVariable Long bookingId,
                                                           @RequestBody Map<String, String> params) {
 
-//        Transaction transaction = transactionRepository.findByTransactionId(transactionId);
-//
-//        transaction.setStatus(status);
-//        transactionRepository.save(transaction);
         try {
             if (params.containsKey("vnp_TmnCode")) {
-                BookingResponse response = bookingService.callbackProcess(bookingId, params);
+                BookingResponse response = bookingService.callbackProcess(bookingId, params, params.get("vnp_TxnRef"));
                 return ResponseEntity.ok(response);
             } else if (params.containsKey("txn_id")) {
                 // Paypal call back
                 return ResponseEntity.badRequest().body(null);
+            } else if (params.containsKey("wallet_TxnRef")) {
+                BookingResponse response = bookingService.callbackProcess(bookingId, params, params.get("wallet_TxnRef"));
+                return ResponseEntity.ok(response);
             }
             return ResponseEntity.badRequest().body(null);
         } catch (RuntimeException e) {

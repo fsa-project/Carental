@@ -84,7 +84,7 @@ public class BookingService {
         String url = processDepositPayment(booking, paymentMethod, request);
         //updateBookingStatus(booking,BookingStatus.DEPOSIT_PAID);
         BookingResponse response = buildBookingResponse(booking, BookingStatus.CONFIRMED.getMessage());
-        response.setVnPayUrl(url);
+        response.setPaymentUrl(url);
         return response;
     }
 
@@ -126,9 +126,9 @@ public class BookingService {
         return buildBookingResponse(booking, booking.getBookingStatus());
     }
 
-    public BookingResponse callbackProcess(Long bookingId, Map<String, String> params) {
+    public BookingResponse callbackProcess(Long bookingId, Map<String, String> params, String transactionId) {
         Booking booking = findBookingById(bookingId);
-        Transaction transaction = transactionRepository.findByTransactionId(params.get("vnp_TxnRef"));
+        Transaction transaction = transactionRepository.findByTransactionId(transactionId);
         PaymentProcessor processor = paymentProcessors.get(transaction.getPaymentType());
         User owner = transaction.getRecipient();
         String responseCode = processor.handleCallback(params);
@@ -143,9 +143,6 @@ public class BookingService {
 
                 transactionRepository.save(transaction);
 
-                owner.setWallet(owner.getWallet() == null ? transaction.getAmount() : owner.getWallet() + transaction.getAmount());
-                userRepository.save(owner);
-
                 return buildBookingResponse(booking, BookingStatus.DEPOSIT_PAID.getMessage());
             }
 
@@ -153,12 +150,20 @@ public class BookingService {
                 // Update rental fee transaction
                 transaction.setStatus(responseCode);
 
-                owner.setWallet(owner.getWallet() == null ? transaction.getAmount() : owner.getWallet() + transaction.getAmount());
                 updateBookingStatus(booking, BookingStatus.PAYMENT_PAID);
                 transactionRepository.save(transaction);
-                userRepository.save(owner);
 
                 return buildBookingResponse(booking, BookingStatus.PAYMENT_PAID.getMessage());
+            }
+
+            if (booking.getBookingStatus().equals(BookingStatus.PENDING_REFUND.getMessage())) {
+                // Update rental fee transaction
+                transaction.setStatus(responseCode);
+
+                updateBookingStatus(booking, BookingStatus.REFUND_PAID);
+                transactionRepository.save(transaction);
+
+                return buildBookingResponse(booking, BookingStatus.REFUND_PAID.getMessage());
             }
         }
         transaction.setStatus(responseCode);
@@ -196,6 +201,16 @@ public class BookingService {
         return buildBookingResponse(booking, BookingStatus.IN_PROGRESS.getMessage());
     }
 
+    public BookingResponse renterConfirmRefund(Long bookingId, Long renterId) {
+        Booking booking = findBookingById(bookingId);
+
+        validateBookingStatus(booking, BookingStatus.REFUND_PAID);
+
+        updateBookingStatus(booking, BookingStatus.COMPLETED);
+
+        return buildBookingResponse(booking, BookingStatus.COMPLETED.getMessage());
+    }
+
     public BookingResponse ownerConfirmPayment(Long bookingId, Long ownerId) {
         Booking booking = findBookingById(bookingId);
 
@@ -214,31 +229,21 @@ public class BookingService {
      */
     public BookingResponse paymentPaid(Long bookingId, String paymentMethod, HttpServletRequest request) {
         Booking booking = findBookingById(bookingId);
-        Car car = booking.getCar();
-        User customer = booking.getUser();
-        User owner = car.getUser();
-        double depositAmount = car.getDeposit();
-//        int deposit = (int) depositAmount;
-        double rentalFee = calculateRentalFee(booking);
-//        int remainingFee = (int) rentalFee;
         validateBookingStatus(booking, BookingStatus.IN_PROGRESS);
         String url = processRentalPayment(booking, paymentMethod, request);
-        //updateBookingStatus(booking, BookingStatus.PAYMENT_PAID);
         BookingResponse response;
-        if (paymentMethod.equalsIgnoreCase("wallet")) {
-            response = buildBookingResponse(booking, BookingStatus.PAYMENT_PAID.getMessage());
-            recordTransaction(customer, booking, -depositAmount, TransactionType.PAYMENT, "Rental payment processed");
-            recordTransaction(owner, booking, depositAmount, TransactionType.PAYMENT, "Rental payment processed");
-            recordTransaction(owner, booking, -car.getDeposit(), TransactionType.DEPOSIT, "Deposit payment refund");
-            recordTransaction(customer, booking, car.getDeposit(), TransactionType.DEPOSIT, "Deposit payment refund");
-            customer.setWallet(customer.getWallet() == null ? car.getDeposit() : customer.getWallet() - car.getDeposit());
-            owner.setWallet(owner.getWallet() == null ? depositAmount : owner.getWallet() + depositAmount);
-            userRepository.save(customer);
-            userRepository.save(owner);
-        } else {
-            response = buildBookingResponse(booking, booking.getBookingStatus());
-        }
-        response.setVnPayUrl(url);
+        response = buildBookingResponse(booking, booking.getBookingStatus());
+        response.setPaymentUrl(url);
+        return response;
+    }
+
+    public BookingResponse refundPaid(Long bookingId, String paymentMethod, HttpServletRequest request) {
+        Booking booking = findBookingById(bookingId);
+        validateBookingStatus(booking, BookingStatus.PENDING_REFUND);
+        String url = processRefundPayment(booking, paymentMethod, request);
+        BookingResponse response;
+        response = buildBookingResponse(booking, booking.getBookingStatus());
+        response.setPaymentUrl(url);
         return response;
     }
 
@@ -319,12 +324,13 @@ public class BookingService {
         booking.setRenter(renter);
         booking.setDriver(driver);
         booking.setBookingStatus(BookingStatus.PENDING_DEPOSIT.getMessage());
+        booking.setTotalAmount(calculateRentalFee(booking));
+        booking.setDeposit(car.getDeposit());
         return booking;
     }
 
     private String processDepositPayment(Booking booking, String paymentMethod, HttpServletRequest request) {
         String url = "";
-        User customer = booking.getUser();
         User owner = booking.getCar().getUser();
         double depositAmount = booking.getCar().getDeposit();
 
@@ -346,28 +352,27 @@ public class BookingService {
         if (processor == null) {
             throw new IllegalArgumentException("Unsupported payment method: " + transaction.getPaymentType());
         }
-
-        if (paymentMethod.equalsIgnoreCase("WALLET")) {
-            if (customer.getWallet() < depositAmount) {
-                throw new RuntimeException("Insufficient wallet balance for deposit");
-            }
-            deductWalletBalance(customer, booking, depositAmount, TransactionType.DEPOSIT, "Deposit payment processed");
-            booking.setPaymentMethod(paymentMethod);
-        }
-        if (paymentMethod.equalsIgnoreCase("VNPAY")) {
-            url = processor.generatePaymentUrl(transaction);
-            booking.setPaymentMethod(paymentMethod);
-        }
+        url = processor.generatePaymentUrl(transaction);
+        booking.setPaymentMethod(paymentMethod);
         return url;
     }
 
     private String processRentalPayment(Booking booking, String paymentMethod, HttpServletRequest request) {
         String url = "";
-        User customer = booking.getUser();
         Car car = booking.getCar();
         User owner = car.getUser();
         double rentalFee = calculateRentalFee(booking);
-        int remainingFee = (int) rentalFee;
+        if (rentalFee > booking.getDeposit()) {
+            rentalFee = rentalFee - booking.getDeposit();
+        } else if (rentalFee == booking.getDeposit()) {
+            booking.setBookingStatus(BookingStatus.COMPLETED.getMessage());
+            bookingRepository.save(booking);
+            return "";
+        } else {
+            booking.setBookingStatus(BookingStatus.PENDING_REFUND.getMessage());
+            bookingRepository.save(booking);
+            return "";
+        }
 
         Transaction transaction = new Transaction();
         transaction.setBooking(booking);
@@ -387,19 +392,40 @@ public class BookingService {
         if (processor == null) {
             throw new IllegalArgumentException("Unsupported payment method: " + transaction.getPaymentType());
         }
+        url = processor.generatePaymentUrl(transaction);
+        booking.setPaymentMethod(paymentMethod);
+        return url;
+    }
 
-        if (paymentMethod.equalsIgnoreCase("WALLET")) {
-            if (customer.getWallet() < rentalFee) {
-                throw new RuntimeException("Insufficient wallet balance for rental payment");
-            }
-            deductWalletBalance(customer, booking, rentalFee, TransactionType.PAYMENT, "Rental payment processed");
-            refundWalletBalance(customer, booking, car.getDeposit(), TransactionType.REFUND, "Deposit refunded");
-            booking.setPaymentMethod(paymentMethod);
+    private String processRefundPayment(Booking booking, String paymentMethod, HttpServletRequest request) {
+        String url = "";
+        Car car = booking.getCar();
+        User owner = car.getUser();
+        double refundFee = calculateRentalFee(booking);
+        if (refundFee < booking.getDeposit()) {
+            refundFee = booking.getDeposit() - refundFee;
         }
-        if (paymentMethod.equalsIgnoreCase("VNPAY")) {
-            url = processor.generatePaymentUrl(transaction);
-            booking.setPaymentMethod(paymentMethod);
+
+        Transaction transaction = new Transaction();
+        transaction.setBooking(booking);
+        transaction.setSender(owner);
+        transaction.setRecipient(booking.getUser());
+        transaction.setAmount(refundFee);
+        transaction.setCurrency("VND"); // Default currency
+        transaction.setTransactionType(TransactionType.REFUND);
+        transaction.setStatus("PENDING");
+        transaction.setTransactionDate(LocalDateTime.now());
+        transaction.setDescription("Refund payment");
+        transaction.setPaymentType(paymentMethod.toUpperCase());
+        transaction.setIpAddress(VNPAYConfig.getIpAddress(request));
+        transaction.setTransactionId(VNPAYConfig.getRandomNumber(8));
+        transaction = transactionService.createTransaction(transaction);
+        PaymentProcessor processor = paymentProcessors.get(transaction.getPaymentType());
+        if (processor == null) {
+            throw new IllegalArgumentException("Unsupported payment method: " + transaction.getPaymentType());
         }
+        url = processor.generatePaymentUrl(transaction);
+        booking.setPaymentMethod(paymentMethod);
         return url;
     }
 
@@ -452,6 +478,8 @@ public class BookingService {
         response.setRenter(booking.getRenter());
         response.setDriver(booking.getDriver());
         response.setId(booking.getId());
+        response.setDeposit(booking.getDeposit());
+        response.setTotalAmount(booking.getTotalAmount());
         return response;
     }
 

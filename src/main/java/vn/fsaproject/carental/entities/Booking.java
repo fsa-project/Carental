@@ -47,4 +47,6 @@ public class Booking {
     private String driversInformation;
     private String paymentMethod;
     private String bookingStatus;
+    private double totalAmount;
+    private double deposit;
 }

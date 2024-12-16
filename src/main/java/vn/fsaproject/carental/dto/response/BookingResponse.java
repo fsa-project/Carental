@@ -16,5 +16,7 @@ public class BookingResponse {
     private String bookingStatus;
     private Date startDateTime;
     private Date endDateTime;
-    private String vnPayUrl;
+    private String paymentUrl;
+    private double totalAmount;
+    private double deposit;
 }

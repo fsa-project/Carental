@@ -2,7 +2,10 @@ package vn.fsaproject.carental.payment.processor;
 import org.springframework.stereotype.Component;
 import vn.fsaproject.carental.config.VNPAYConfig;
 import vn.fsaproject.carental.entities.Transaction;
+import vn.fsaproject.carental.entities.User;
 import vn.fsaproject.carental.payment.constant.PaymentProcessor;
+import vn.fsaproject.carental.repository.TransactionRepository;
+import vn.fsaproject.carental.repository.UserRepository;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -12,6 +15,13 @@ import java.util.*;
 
 @Component
 public class VNPayProcessor implements PaymentProcessor {
+    private final UserRepository userRepository;
+    private final TransactionRepository transactionRepository;
+    public VNPayProcessor(UserRepository userRepository,
+                           TransactionRepository transactionRepository) {
+        this.userRepository = userRepository;
+        this.transactionRepository = transactionRepository;
+    }
     @Override
     public String generatePaymentUrl(Transaction transaction) {
         //Các bạn có thể tham khảo tài liệu hướng dẫn và điều chỉnh các tham số
@@ -90,6 +100,8 @@ public class VNPayProcessor implements PaymentProcessor {
             String status = parameters.get("vnp_ResponseCode");
             switch (status) {
                 case "00":
+                    double amount = Double.parseDouble(parameters.get("vnp_Amount"));
+                    deductWalletBalance(amount, transactionRepository.findByTransactionId(parameters.get("vnp_TxnRef")));
                     return "SUCCESS";
                 case "24":
                     return "CANCELED";
@@ -105,4 +117,12 @@ public class VNPayProcessor implements PaymentProcessor {
         return "VNPAY";
     }
 
+    private void deductWalletBalance(double amount, Transaction transaction) {
+        if (transaction.getStatus().equalsIgnoreCase("PENDING")) {
+            User recipient = transaction.getRecipient();
+
+            recipient.setWallet(recipient.getWallet() == 0 ? amount : recipient.getWallet() + amount);
+            userRepository.save(recipient);
+        }
+    }
 }

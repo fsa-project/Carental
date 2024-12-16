@@ -9,7 +9,9 @@ public enum BookingStatus {
     PENDING_PAYMENT("Pending Payment"),
     PAYMENT_PAID("Payment Paid"),
     COMPLETED("Completed"),
-    CANCELED("Canceled");
+    CANCELED("Canceled"),
+    PENDING_REFUND("Pending Refund"),
+    REFUND_PAID("Refund Paid");
     ;
     private String message;
 

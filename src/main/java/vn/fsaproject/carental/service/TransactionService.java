@@ -14,8 +14,8 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
 
-    public void updateTransactionStatus(String vnpTxnRef, String status) {
-        Transaction transaction = transactionRepository.findByTransactionId(vnpTxnRef);
+    public void updateTransactionStatus(String transactionId, String status) {
+        Transaction transaction = transactionRepository.findByTransactionId(transactionId);
         transaction.setStatus(status);
         transactionRepository.save(transaction);
     }

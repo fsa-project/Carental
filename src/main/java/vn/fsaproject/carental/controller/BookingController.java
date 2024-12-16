@@ -91,6 +91,15 @@ public class BookingController {
         BookingResponse response = bookingService.ownerConfirmPickup(bookingId, userId);
         return ResponseEntity.ok(response);
     }
+
+    @PatchMapping("/{bookingId}/confirm-refund")
+    public ResponseEntity<BookingResponse> renterConfirmRefund(
+            @PathVariable Long bookingId) {
+        Long userId = securityUtil.getCurrentUserId();
+        BookingResponse response = bookingService.renterConfirmRefund(bookingId, userId);
+        return ResponseEntity.ok(response);
+    }
+
     @PatchMapping("/{bookingId}/confirm-payment")
     public ResponseEntity<BookingResponse> ownerConfirmPayment(
             @PathVariable Long bookingId) {
@@ -112,6 +121,21 @@ public class BookingController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @PostMapping("/refund/{bookingId}")
+    public ResponseEntity<?> refundBooking(@PathVariable Long bookingId,
+                                             @RequestParam String paymentMethod,
+                                             HttpServletRequest request
+    ) {
+        try{
+            BookingResponse response = bookingService.refundPaid(bookingId,paymentMethod,request);
+            return ResponseEntity.ok(response);
+        }catch (RuntimeException e) {
+            log.error("Error completing booking: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @PostMapping("/cancel/{bookingId}")
     @ApiMessage("User has stop booking")
     public ResponseEntity<?> cancelBooking(@PathVariable Long bookingId) {
