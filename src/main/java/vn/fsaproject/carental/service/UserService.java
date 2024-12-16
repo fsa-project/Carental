@@ -15,6 +15,8 @@ import vn.fsaproject.carental.mapper.UserMapper;
 import vn.fsaproject.carental.repository.RoleRepository;
 import vn.fsaproject.carental.repository.UserRepository;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -71,7 +73,13 @@ public class UserService {
     public DataPaginationResponse getUserTransactions(long userId,Pageable pageable) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return createPaginatedResponse(pageable, user.getRecipients());
+        List<Transaction> transactions = new ArrayList<>(user.getSenders());
+        transactions.stream().forEach(transaction -> {transaction.setAmount(-transaction.getAmount());});
+        transactions.addAll(user.getRecipients());
+        transactions.sort(Comparator.comparingLong(Transaction::getId));
+
+
+        return createPaginatedResponse(pageable, transactions);
     }
     public UserResponse handleUserById(long id) {
         User user = userRepository.findById(id).orElse(null);
