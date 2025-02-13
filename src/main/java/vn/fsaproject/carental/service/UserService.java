@@ -74,7 +74,7 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         List<Transaction> transactions = new ArrayList<>(user.getSenders());
-        transactions.stream().forEach(transaction -> {transaction.setAmount(-transaction.getAmount());});
+        transactions.forEach(transaction -> {transaction.setAmount(-transaction.getAmount());});
         transactions.addAll(user.getRecipients());
         transactions.sort(Comparator.comparingLong(Transaction::getId));
 
